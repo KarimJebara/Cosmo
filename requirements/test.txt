@@ -1,0 +1,6 @@
+-r base.txt
+
+pytest==9.0.2
+pytest-cov==6.0.0
+responses==0.25.3
+freezegun==1.5.1

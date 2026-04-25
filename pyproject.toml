@@ -1,0 +1,48 @@
+[project]
+name = "cosmo"
+version = "0.1.0-dev"
+description = "Self-hosted multi-currency budget tracker for expats and digital nomads"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [".venv", "__pycache__", "Documentations"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+    "RUF", # ruff-specific
+]
+ignore = [
+    "E501",  # line length handled by formatter
+    "B008",  # function calls in argument defaults (Flask common)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011"]  # pytest assert messages
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "unit: pure-function tests with no external dependencies",
+    "integration: tests that touch the database or HTTP layer",
+    "slow: tests >1s — skipped by default in dev",
+]

@@ -17,9 +17,12 @@ venv/
 .venv/
 .venv_old/
 env/
+.env
+.env.local
 
 # Database and data files
 data/budget_tracker.db
+data/cosmo.db
 data/merchant_category_expenses.json
 data/merchant_category_income.json
 
