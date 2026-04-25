@@ -32,19 +32,56 @@ def test_authenticate_user(setup_database):
 
 
 def test_hash_password(setup_database):
-    """Test password hashing functionality."""
+    """Hashes use Argon2id (PHC format) with random salt: never equal each other."""
     password = 'testpassword'
     hashed = database.hash_password(password)
     assert hashed != password
     assert isinstance(hashed, str)
+    assert hashed.startswith('$argon2')
+    # Each hash should be unique due to random salt
+    assert hashed != database.hash_password(password)
 
 
 def test_verify_password(setup_database):
-    """Test password verification."""
+    """Argon2 hashes verify correctly and reject wrong passwords."""
     password = 'testpassword'
     hashed = database.hash_password(password)
     assert database.verify_password(password, hashed)
     assert not database.verify_password('wrongpassword', hashed)
+
+
+def test_verify_legacy_sha256_password(setup_database):
+    """Legacy unsalted SHA-256 hashes still verify so existing users can log in."""
+    import hashlib
+
+    password = 'legacy-user-password'
+    legacy_hash = hashlib.sha256(password.encode()).hexdigest()
+    assert database.verify_password(password, legacy_hash)
+    assert not database.verify_password('wrong', legacy_hash)
+
+
+def test_authenticate_upgrades_legacy_hash(setup_database):
+    """Authenticating with a legacy SHA-256 hash silently rehashes to Argon2."""
+    import hashlib
+
+    username = 'legacy_user'
+    password = 'legacy-pass-123'
+    legacy_hash = hashlib.sha256(password.encode()).hexdigest()
+
+    with database.get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            'INSERT INTO users (username, password_hash) VALUES (?, ?)',
+            (username, legacy_hash),
+        )
+        user_id = cursor.lastrowid
+
+    assert database.authenticate_user(username, password) == user_id
+
+    # The stored hash should now be Argon2id, not the original SHA-256
+    user = database.get_user_by_id(user_id)
+    assert user['password_hash'].startswith('$argon2')
+    assert user['password_hash'] != legacy_hash
 
 
 def test_get_user_by_id(setup_database):

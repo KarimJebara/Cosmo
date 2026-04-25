@@ -1,10 +1,27 @@
-import sqlite3
 import hashlib
+import logging
 import os
-from pathlib import Path
+import sqlite3
 from contextlib import contextmanager
 
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
+
 DATABASE_PATH = 'data/budget_tracker.db'
+
+logger = logging.getLogger(__name__)
+
+# Argon2id with PHC-recommended defaults; tweak via env if needed.
+_HASHER = PasswordHasher()
+
+
+def _is_legacy_sha256(password_hash: str) -> bool:
+    """Detect a legacy unsalted SHA-256 hex digest (64 hex chars)."""
+    return (
+        isinstance(password_hash, str)
+        and len(password_hash) == 64
+        and all(c in '0123456789abcdef' for c in password_hash.lower())
+    )
 
 def ensure_data_directory_exists():
     """Ensure data directory exists"""
@@ -104,16 +121,27 @@ def init_db():
         cursor.close()
         conn.close()
 
-def hash_password(password):
-    """Hash a password using SHA-256"""
-    return hashlib.sha256(password.encode()).hexdigest()
+def hash_password(password: str) -> str:
+    """Hash a password using Argon2id (PHC winner, recommended for new code)."""
+    return _HASHER.hash(password)
 
-def verify_password(password, password_hash):
-    """Verify a password against its hash"""
-    return hash_password(password) == password_hash
 
-def create_user(username, password):
-    """Create a new user"""
+def verify_password(password: str, password_hash: str) -> bool:
+    """Verify a password against its hash. Supports legacy unsalted SHA-256 hashes."""
+    if _is_legacy_sha256(password_hash):
+        return hashlib.sha256(password.encode()).hexdigest() == password_hash
+    try:
+        return _HASHER.verify(password_hash, password)
+    except VerifyMismatchError:
+        return False
+    except Exception:
+        # Argon2 raises InvalidHash and friends — treat any non-match as failure.
+        logger.warning("Unexpected hash format encountered during verify")
+        return False
+
+
+def create_user(username: str, password: str) -> int | None:
+    """Create a new user with an Argon2id-hashed password."""
     with get_db() as conn:
         cursor = conn.cursor()
         password_hash = hash_password(password)
@@ -126,8 +154,29 @@ def create_user(username, password):
         except sqlite3.IntegrityError:
             return None
 
-def authenticate_user(username, password):
-    """Authenticate a user and return user_id if successful"""
+
+def _upgrade_password_hash_if_needed(user_id: int, password: str, current_hash: str) -> None:
+    """Transparently rehash legacy SHA-256 or out-of-date Argon2 params on successful login."""
+    needs_upgrade = _is_legacy_sha256(current_hash)
+    if not needs_upgrade:
+        try:
+            needs_upgrade = _HASHER.check_needs_rehash(current_hash)
+        except Exception:
+            needs_upgrade = False
+    if not needs_upgrade:
+        return
+    new_hash = _HASHER.hash(password)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            'UPDATE users SET password_hash = ? WHERE id = ?',
+            (new_hash, user_id),
+        )
+    logger.info("Upgraded password hash for user_id=%s", user_id)
+
+
+def authenticate_user(username: str, password: str) -> int | None:
+    """Authenticate a user and return user_id if successful. Rehashes legacy hashes on success."""
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
@@ -135,9 +184,10 @@ def authenticate_user(username, password):
             (username,)
         )
         user = cursor.fetchone()
-        if user and verify_password(password, user['password_hash']):
-            return user['id']
-        return None
+    if user and verify_password(password, user['password_hash']):
+        _upgrade_password_hash_if_needed(user['id'], password, user['password_hash'])
+        return user['id']
+    return None
 
 def get_user_by_id(user_id):
     """Get user information by user_id"""
