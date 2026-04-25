@@ -1,16 +1,40 @@
-from flask import Flask, render_template, redirect, url_for, request, flash, session
-from models.data_manager import DataManager
-from datetime import datetime, timedelta
-from collections import defaultdict
+import logging
+import os
+import secrets
 import statistics
-from api.revolut_importer import RevolutImporter
-from merchant_mapper import update_merchant_category, auto_categorize_transaction, ensure_merchant_files_exist
-from currency_converter import format_amount_with_conversion, convert_to_eur
+from collections import defaultdict
+from datetime import datetime, timedelta
 from functools import wraps
+
+from flask import Flask, flash, redirect, render_template, request, session, url_for
+
 import database
+from api.revolut_importer import RevolutImporter
+from currency_converter import convert_to_eur, format_amount_with_conversion
+from merchant_mapper import (
+    auto_categorize_transaction,
+    ensure_merchant_files_exist,
+    update_merchant_category,
+)
+from models.data_manager import DataManager
+
+# Configure logging once at app import. Level overridable via LOG_LEVEL env var.
+logging.basicConfig(
+    level=os.environ.get("LOG_LEVEL", "INFO"),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key_please_change_in_production'  # Replace with a secure key
+# SECRET_KEY: use env var in production. Random fallback prevents the old hardcoded
+# placeholder from being deployed unchanged, but warns the user loudly.
+_secret = os.environ.get("SECRET_KEY")
+if not _secret:
+    _secret = secrets.token_urlsafe(48)
+    logging.getLogger(__name__).warning(
+        "SECRET_KEY not set — generated a per-process random key. "
+        "Sessions will invalidate on every restart. Set SECRET_KEY in .env for production."
+    )
+app.secret_key = _secret
 
 # Initialize database
 database.init_db()

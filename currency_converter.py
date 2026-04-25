@@ -1,16 +1,25 @@
-import requests
+import logging
 from functools import lru_cache
+
+import requests
+
+logger = logging.getLogger(__name__)
 
 EXCHANGE_RATES_URL = "https://api.exchangerate-api.com/v4/latest/EUR"
 
+
+# NOTE: Phase-2 of the cosmo-v1 plan replaces this entire module with cosmo/fx/
+# (DB-backed rate cache, historical rates, multi-provider fallback). The lru_cache
+# below is a known footgun (rates never refresh in-process) and is preserved only
+# until the new fx service ships. Do not extend this module.
 @lru_cache(maxsize=32)
 def get_exchange_rates():
     try:
         response = requests.get(EXCHANGE_RATES_URL, timeout=5)
         response.raise_for_status()
         return response.json().get('rates', {})
-    except Exception as e:
-        print(f"Error fetching exchange rates: {e}")
+    except requests.RequestException:
+        logger.exception("Failed to fetch exchange rates from %s", EXCHANGE_RATES_URL)
         return {}
 
 def convert_to_eur(amount, from_currency):
