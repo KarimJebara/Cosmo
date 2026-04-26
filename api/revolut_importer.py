@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import csv
 import datetime as _dt
+import io
+import logging
 from dataclasses import dataclass
 from typing import List
-import io
-import csv
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -50,7 +53,7 @@ class RevolutImporter:
 
                 transactions.append(TransactionRecord(date=date, amount=amount, description=description, currency=currency))
             except (ValueError, IndexError) as e:
-                print(f"Skipping malformed row: {row} - Error: {e}")
+                logger.warning("Skipping malformed row %s: %s", row, e)
                 continue
         return transactions
 

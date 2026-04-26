@@ -1,6 +1,13 @@
 import json
+import logging
 import os
-from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+# NOTE: Phase-3 of the cosmo-v1 plan replaces this module with cosmo/categorize/
+# (per-user merchant_rules table, fuzzy matching via rapidfuzz, normalization).
+# The current dict[str -> str] is GLOBAL ACROSS USERS — a critical bug that will
+# be fixed in the migration. Do not extend this module.
 
 MERCHANT_CATEGORY_FILE_INCOME = 'data/merchant_category_income.json'
 MERCHANT_CATEGORY_FILE_EXPENSES = 'data/merchant_category_expenses.json'
@@ -30,8 +37,8 @@ def _ensure_merchant_file_exists(transaction_type='expenses'):
     try:
         with open(merchant_file, 'w') as f:
             json.dump({}, f, indent=4)
-    except IOError as e:
-        print(f"Error creating merchant categories file {merchant_file}: {e}")
+    except OSError:
+        logger.exception("Error creating merchant categories file %s", merchant_file)
 
 def load_merchant_categories(transaction_type='expenses'):
     """
@@ -64,8 +71,8 @@ def save_merchant_categories(merchant_dict, transaction_type='expenses'):
     try:
         with open(merchant_file, 'w') as f:
             json.dump(merchant_dict, f, indent=4)
-    except IOError as e:
-        print(f"Error saving merchant categories: {e}")
+    except OSError:
+        logger.exception("Error saving merchant categories to %s", merchant_file)
 
 def ensure_merchant_files_exist():
     """
