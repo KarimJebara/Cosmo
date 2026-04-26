@@ -1,54 +1,72 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="light" lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Create your Cosmo account</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
 </head>
-<body>
-    <div class="auth-shell">
-        <div class="auth-card">
-            <div class="auth-brand">
-                <div class="navbar-avatar">C</div>
-                <span>Cosmo</span>
-            </div>
+<body class="bg-zinc-50 min-h-screen flex items-center justify-center px-4 py-12">
 
-            <h1 class="auth-title">Create your Cosmo account</h1>
-            <p class="auth-subtitle">Track income, expenses, and budgets across currencies.</p>
-
-            {% with messages = get_flashed_messages() %}
-              {% if messages %}
-                <div class="flash-messages">
-                {% for message in messages %}
-                  <div class="alert alert-info">{{ message }}</div>
-                {% endfor %}
-                </div>
-              {% endif %}
-            {% endwith %}
-
-            <form method="post" novalidate>
-                <div class="field">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" autocomplete="username" required autofocus minlength="3">
-                    <div class="help">At least 3 characters.</div>
-                </div>
-                <div class="field">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" autocomplete="new-password" required minlength="4">
-                    <div class="help">At least 4 characters.</div>
-                </div>
-                <div class="field">
-                    <label for="confirm_password">Confirm password</label>
-                    <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" required minlength="4">
-                </div>
-                <button type="submit" class="btn btn-primary btn-full">Create account</button>
-            </form>
-
-            <div class="auth-footer">
-                Already have an account? <a href="{{ url_for('login') }}">Sign in.</a>
-            </div>
+<div class="w-full max-w-md">
+    <div class="flex items-center justify-center gap-3 mb-8">
+        <div class="w-10 h-10 rounded-full bg-zinc-900 text-white flex items-center justify-center font-bold text-lg font-display">C</div>
+        <div>
+            <div class="text-2xl font-bold text-zinc-900 tracking-tight font-display leading-none">Cosmo</div>
+            <div class="text-xs text-zinc-500 mt-1">Fintech for expats</div>
         </div>
     </div>
+
+    <div class="bg-white border border-zinc-200 rounded-2xl shadow-sm p-8">
+        <h1 class="text-2xl font-bold text-zinc-900 font-display mb-1">Create your account</h1>
+        <p class="text-sm text-zinc-500 mb-6">Track income, expenses, and budgets across currencies.</p>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="space-y-2 mb-4">
+                    {% for message in messages %}
+                        <div class="px-4 py-3 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 text-sm">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="post" novalidate class="space-y-4">
+            <div class="space-y-1.5">
+                <label for="username" class="text-xs font-medium text-zinc-600">Username</label>
+                <input type="text" id="username" name="username" autocomplete="username" required autofocus minlength="3"
+                       class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                <p class="text-xs text-zinc-400">At least 3 characters.</p>
+            </div>
+            <div class="space-y-1.5">
+                <label for="password" class="text-xs font-medium text-zinc-600">Password</label>
+                <input type="password" id="password" name="password" autocomplete="new-password" required minlength="4"
+                       class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                <p class="text-xs text-zinc-400">At least 4 characters.</p>
+            </div>
+            <div class="space-y-1.5">
+                <label for="confirm_password" class="text-xs font-medium text-zinc-600">Confirm password</label>
+                <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" required minlength="4"
+                       class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <button type="submit"
+                    class="w-full mt-2 bg-[#3b5bdb] hover:bg-[#3346b5] text-white font-medium text-sm py-2.5 rounded-lg transition-colors shadow-sm">
+                Create account
+            </button>
+        </form>
+
+        <div class="mt-6 pt-6 border-t border-zinc-100 text-center text-sm text-zinc-500">
+            Already have an account? <a href="{{ url_for('login') }}" class="text-[#3b5bdb] font-medium hover:underline">Sign in</a>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>

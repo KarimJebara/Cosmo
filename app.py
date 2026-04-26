@@ -9,6 +9,15 @@ from flask import Flask, flash, redirect, render_template, request, session, url
 
 import database
 from cosmo import legacy_adapter
+from cosmo.analytics import (
+    category_drift,
+    cumulative_balance_series,
+    currency_exposure,
+    detect_subscriptions,
+    saving_rate,
+    spend_by_account,
+    top_merchants,
+)
 from cosmo.importers import get_importer
 from currency_converter import format_amount_with_conversion
 from merchant_mapper import (
@@ -46,6 +55,15 @@ def jinja_format_with_conversion(amount, currency):
     """Format amount with currency conversion"""
     return format_amount_with_conversion(amount, currency)
 
+
+@app.template_filter('money')
+def jinja_money(amount, decimals=2):
+    """Format a number with thousands separators."""
+    try:
+        return f"{float(amount):,.{decimals}f}"
+    except (TypeError, ValueError):
+        return amount
+
 def linear_regression(x_values, y_values):
     """Simple linear regression using least squares method"""
     if len(x_values) < 2 or len(y_values) < 2:
@@ -71,7 +89,7 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
-            flash('Please log in to access this page.')
+            flash('Please log in to access this page.', 'error')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
@@ -110,7 +128,7 @@ def login():
         password = request.form.get('password')
 
         if not username or not password:
-            flash('Fill in all required fields.')
+            flash('Fill in all required fields.', 'error')
             return redirect(url_for('login'))
 
         user_id = database.authenticate_user(username, password)
@@ -122,7 +140,7 @@ def login():
             flash(f'Welcome back, {username}.')
             return redirect(url_for('dashboard'))
         else:
-            flash('Invalid username or password.')
+            flash('Invalid username or password.', 'error')
             return redirect(url_for('login'))
 
     return render_template('login.html')
@@ -136,19 +154,19 @@ def signup():
         confirm_password = request.form.get('confirm_password')
 
         if not username or not password or not confirm_password:
-            flash('Fill in all required fields.')
+            flash('Fill in all required fields.', 'error')
             return redirect(url_for('signup'))
 
         if len(username) < 3:
-            flash('Username must be at least 3 characters long.')
+            flash('Username must be at least 3 characters long.', 'error')
             return redirect(url_for('signup'))
 
         if len(password) < 4:
-            flash('Password must be at least 4 characters long.')
+            flash('Password must be at least 4 characters long.', 'error')
             return redirect(url_for('signup'))
 
         if password != confirm_password:
-            flash('Passwords do not match.')
+            flash('Passwords do not match.', 'error')
             return redirect(url_for('signup'))
 
         user_id = database.create_user(username, password)
@@ -158,7 +176,7 @@ def signup():
             flash(f'Account created. Welcome, {username}.')
             return redirect(url_for('dashboard'))
         else:
-            flash('That username is already taken. Pick another.')
+            flash('That username is already taken. Pick another.', 'error')
             return redirect(url_for('signup'))
 
     return render_template('signup.html')
@@ -191,7 +209,7 @@ def set_timeframe(months):
 
 def filter_by_timeframe(items):
     """Filter items by the selected timeframe"""
-    timeframe_months = session.get('timeframe_months', 12)  # Default to 12 months
+    timeframe_months = session.get('timeframe_months', 1)  # Default to current month
     cutoff_date = datetime.now() - timedelta(days=timeframe_months * 30)
 
     filtered_items = []
@@ -218,7 +236,7 @@ def predict_value(slope, intercept, x):
 def dashboard():
     try:
         # Get timeframe from session (default to 12 months)
-        timeframe_months = session.get('timeframe_months', 12)
+        timeframe_months = session.get('timeframe_months', 1)
 
         # Get all data and filter by timeframe
         uid = _current_user_id()
@@ -377,7 +395,7 @@ def income():
         currency = request.form.get('currency', 'EUR')
 
         if not date or not user_category or not amount:
-            flash('All fields are required.')
+            flash('All fields are required.', 'error')
             return redirect(url_for('income'))
 
         try:
@@ -385,7 +403,7 @@ def income():
             if amount <= 0:
                 raise ValueError("Amount must be positive")
         except ValueError:
-            flash('Invalid amount.')
+            flash('Invalid amount.', 'error')
             return redirect(url_for('income'))
 
         auto_category = legacy_adapter.auto_categorize(
@@ -404,19 +422,37 @@ def income():
                 currency=currency,
             )
         except ValueError:
-            flash('Invalid date format — use YYYY-MM-DD.')
+            flash('Invalid date format — use YYYY-MM-DD.', 'error')
             return redirect(url_for('income'))
 
         flash('Income added.')
         return redirect(url_for('income'))
 
-    timeframe_months = session.get('timeframe_months', 12)
+    timeframe_months = session.get('timeframe_months', 1)
     all_incomes = legacy_adapter.get_incomes(_current_user_id())
     incomes = filter_by_timeframe(all_incomes)
-    # Sort by date descending (most recent first)
     incomes = sorted(incomes, key=lambda x: x.date, reverse=True)
     total_income = sum([float(getattr(t, 'amount', 0.0)) for t in incomes])
-    return render_template('income.html', incomes=incomes, total_income=total_income, timeframe_months=timeframe_months)
+
+    page = max(1, int(request.args.get('page', 1) or 1))
+    per_page = 25
+    total_count = len(incomes)
+    total_pages = max(1, (total_count + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    start = (page - 1) * per_page
+    page_incomes = incomes[start:start + per_page]
+
+    return render_template(
+        'income.html',
+        incomes=page_incomes,
+        total_income=total_income,
+        timeframe_months=timeframe_months,
+        page=page,
+        total_pages=total_pages,
+        total_count=total_count,
+        per_page=per_page,
+        today=datetime.now().strftime('%Y-%m-%d'),
+    )
 
 
 @app.route('/expenses', methods=['GET', 'POST'])
@@ -430,7 +466,7 @@ def expenses():
         currency = request.form.get('currency', 'EUR')
 
         if not date or not user_category or not amount:
-            flash('All fields are required.')
+            flash('All fields are required.', 'error')
             return redirect(url_for('expenses'))
 
         try:
@@ -438,7 +474,7 @@ def expenses():
             if amount <= 0:
                 raise ValueError("Amount must be positive")
         except ValueError:
-            flash('Invalid amount.')
+            flash('Invalid amount.', 'error')
             return redirect(url_for('expenses'))
 
         auto_category = legacy_adapter.auto_categorize(
@@ -457,19 +493,37 @@ def expenses():
                 currency=currency,
             )
         except ValueError:
-            flash('Invalid date format — use YYYY-MM-DD.')
+            flash('Invalid date format — use YYYY-MM-DD.', 'error')
             return redirect(url_for('expenses'))
 
         flash('Expense added.')
         return redirect(url_for('expenses'))
 
-    timeframe_months = session.get('timeframe_months', 12)
+    timeframe_months = session.get('timeframe_months', 1)
     all_expenses = legacy_adapter.get_expenses(_current_user_id())
     expenses = filter_by_timeframe(all_expenses)
-    # Sort by date descending (most recent first)
     expenses = sorted(expenses, key=lambda x: x.date, reverse=True)
     total_expenses = sum([float(getattr(t, 'amount', 0.0)) for t in expenses])
-    return render_template('expenses.html', expenses=expenses, total_expenses=total_expenses, timeframe_months=timeframe_months)
+
+    page = max(1, int(request.args.get('page', 1) or 1))
+    per_page = 25
+    total_count = len(expenses)
+    total_pages = max(1, (total_count + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    start = (page - 1) * per_page
+    page_expenses = expenses[start:start + per_page]
+
+    return render_template(
+        'expenses.html',
+        expenses=page_expenses,
+        total_expenses=total_expenses,
+        timeframe_months=timeframe_months,
+        page=page,
+        total_pages=total_pages,
+        total_count=total_count,
+        per_page=per_page,
+        today=datetime.now().strftime('%Y-%m-%d'),
+    )
 
 
 @app.route('/revolut_import', methods=['GET', 'POST'])
@@ -509,7 +563,7 @@ def revolut_import():
             flash('Invalid file type. Please upload a CSV file.', 'error')
             return redirect(request.url)
 
-    timeframe_months = session.get('timeframe_months', 12)
+    timeframe_months = session.get('timeframe_months', 1)
     return render_template('revolut_import.html', timeframe_months=timeframe_months)
 
 
@@ -603,7 +657,7 @@ def budgets():
         limit = request.form.get('limit')
 
         if not category or not limit:
-            flash('Fill in all required fields.')
+            flash('Fill in all required fields.', 'error')
             return redirect(url_for('budgets'))
 
         try:
@@ -611,7 +665,7 @@ def budgets():
             if limit <= 0:
                 raise ValueError("Limit must be positive")
         except ValueError:
-            flash('Invalid limit amount.')
+            flash('Invalid limit amount.', 'error')
             return redirect(url_for('budgets'))
 
         legacy_adapter.set_budget(_current_user_id(), category=category, limit_amount=limit)
@@ -619,7 +673,7 @@ def budgets():
         return redirect(url_for('budgets'))
 
     # Calculate spending per category with timeframe filtering
-    timeframe_months = session.get('timeframe_months', 12)
+    timeframe_months = session.get('timeframe_months', 1)
     uid = _current_user_id()
     all_expenses = legacy_adapter.get_expenses(uid)
     expenses = filter_by_timeframe(all_expenses)
@@ -676,10 +730,10 @@ def accounts():
         acc_type = (request.form.get('type') or 'checking').strip()
 
         if not name or not currency:
-            flash('Name and currency are required.')
+            flash('Name and currency are required.', 'error')
             return redirect(url_for('accounts'))
         if len(currency) != 3 or not currency.isalpha():
-            flash('Currency must be a 3-letter ISO code.')
+            flash('Currency must be a 3-letter ISO code.', 'error')
             return redirect(url_for('accounts'))
 
         legacy_adapter.create_account(
@@ -725,7 +779,7 @@ def transfer():
             )
             flash('Transfer created.')
         except ValueError as exc:
-            flash(f'Could not create transfer: {exc}')
+            flash(f'Could not create transfer: {exc}', 'error')
         return redirect(url_for('transfer'))
 
     account_views = legacy_adapter.get_accounts(uid)
@@ -754,7 +808,7 @@ def delete_rule(rule_id):
 @app.route('/reports')
 @login_required
 def reports():
-    timeframe_months = session.get('timeframe_months', 12)
+    timeframe_months = session.get('timeframe_months', 1)
 
     # Get all transactions and filter by timeframe
     uid = _current_user_id()
@@ -897,7 +951,7 @@ def reports():
 def graphs_stats():
     """Comprehensive analytics and visualization dashboard with predictions"""
     try:
-        timeframe_months = session.get('timeframe_months', 12)
+        timeframe_months = session.get('timeframe_months', 1)
         uid = _current_user_id()
         all_incomes = legacy_adapter.get_incomes(uid)
         all_expenses = legacy_adapter.get_expenses(uid)
@@ -1114,8 +1168,51 @@ def graphs_stats():
         else:
             days_until_low = float('inf')
 
+        # ===== TIER 1 INSIGHTS =====
+        # Currency exposure: separate income vs expenses by original currency.
+        income_currency_slices = currency_exposure(incomes)
+        expense_currency_slices = currency_exposure(expenses)
+
+        # Spend by account.
+        accounts = legacy_adapter.get_accounts(uid)
+        account_spend = spend_by_account(expenses, accounts)
+
+        # Recurring subscription detector — uses the last 90 days regardless
+        # of timeframe, otherwise the user has to be in 12-month view to see it.
+        all_expenses_full = legacy_adapter.get_expenses(uid)
+        subscriptions = detect_subscriptions(all_expenses_full, lookback_days=90)
+        subscription_total_eur = sum(s.monthly_eur for s in subscriptions)
+
+        # Cumulative balance line over the active timeframe.
+        cumulative_points = cumulative_balance_series(incomes, expenses)
+        cumulative_labels = [p.date for p in cumulative_points]
+        cumulative_values = [p.balance for p in cumulative_points]
+
+        # ===== TIER 2 INSIGHTS =====
+        savings = saving_rate(total_income, total_expenses)
+        merchant_leaderboard = top_merchants(expenses, n=10)
+
+        # Category drift: compare current period vs the 3 prior periods of
+        # equal length. Build the baseline window by extending the cutoff back.
+        baseline_months = max(timeframe_months, 1) * 3
+        baseline_cutoff = datetime.now() - timedelta(days=(timeframe_months + baseline_months) * 30)
+        current_cutoff = datetime.now() - timedelta(days=timeframe_months * 30)
+        baseline_expenses = []
+        for e in all_expenses_full:
+            d = getattr(e, 'date', '')
+            try:
+                dt = datetime.strptime(d, '%Y-%m-%d')
+            except (ValueError, TypeError):
+                continue
+            if baseline_cutoff <= dt < current_cutoff:
+                baseline_expenses.append(e)
+        drift = category_drift(expenses, baseline_expenses, baseline_periods=3)
+        # Surface only the categories that actually drifted.
+        drift_above = [d for d in drift if d.direction == "above"][:5]
+        drift_below = [d for d in drift if d.direction == "below"][:3]
+
     except Exception as e:
-        print(f"Error in graphs_stats: {e}")
+        logging.getLogger(__name__).exception("Error in graphs_stats: %s", e)
         total_income = total_expenses = balance = 0
         category_labels = category_values = []
         top_cat_names = top_cat_values = []
@@ -1132,6 +1229,14 @@ def graphs_stats():
         top_pred_categories = {}
         max_pred_category_value = 1
         days_until_low = float('inf')
+        income_currency_slices = expense_currency_slices = []
+        account_spend = []
+        subscriptions = []
+        subscription_total_eur = 0
+        cumulative_labels = cumulative_values = []
+        savings = saving_rate(0, 0)
+        merchant_leaderboard = []
+        drift_above = drift_below = []
 
     return render_template('graphs_stats.html',
                            total_income=total_income,
@@ -1162,7 +1267,18 @@ def graphs_stats():
                            top_pred_categories=top_pred_categories,
                            max_pred_category_value=max_pred_category_value,
                            days_until_low=days_until_low,
-                           timeframe_months=timeframe_months)
+                           timeframe_months=timeframe_months,
+                           income_currency_slices=income_currency_slices,
+                           expense_currency_slices=expense_currency_slices,
+                           account_spend=account_spend,
+                           subscriptions=subscriptions,
+                           subscription_total_eur=subscription_total_eur,
+                           cumulative_labels=cumulative_labels,
+                           cumulative_values=cumulative_values,
+                           savings=savings,
+                           merchant_leaderboard=merchant_leaderboard,
+                           drift_above=drift_above,
+                           drift_below=drift_below)
 
 
 

@@ -1,114 +1,85 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Transfer | Cosmo</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
-    <style>
-        .transfer-wrap { max-width: 540px; margin: 0 auto; }
-        .transfer-actions { display: flex; justify-content: flex-end; margin-top: var(--sp-4); }
-        .alert-cta { display: inline-block; margin-top: var(--sp-3); }
-    </style>
-</head>
-<body>
-    <nav class="navbar">
-        <div class="navbar-brand">
-            <div class="navbar-avatar">{{ session.username[0].upper() if session.username else 'U' }}</div>
-            <strong>Cosmo</strong>
-        </div>
-        <div class="navbar-nav">
-            <a href="{{ url_for('dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('accounts') }}">Accounts</a>
-            <a href="{{ url_for('income') }}">Income</a>
-            <a href="{{ url_for('expenses') }}">Expenses</a>
-            <a href="{{ url_for('budgets') }}">Budgets</a>
-            <a href="{{ url_for('reports') }}">Reports</a>
-            <a href="{{ url_for('graphs_stats') }}">Analytics</a>
-            <a href="{{ url_for('rules') }}">Rules</a>
-            <a href="{{ url_for('revolut_import') }}">Import</a>
-            <a href="{{ url_for('logout') }}" class="navbar-logout">Logout</a>
-        </div>
-    </nav>
+{% extends "_layout.html" %}
+{% set active_page = 'transfer' %}
+{% block title %}Transfer | Cosmo{% endblock %}
+{% block header_title %}Transfer{% endblock %}
+{% block header_subtitle %}
+<span class="hidden md:inline-block text-sm text-zinc-500 border-l border-zinc-200 pl-4">
+    Move money between accounts, excluded from totals
+</span>
+{% endblock %}
 
-    <div class="container container-lg">
-        <div class="transfer-wrap">
-            <div class="page-header">
-                <div>
-                    <h1>Transfer</h1>
-                    <p class="muted">Move money between your accounts. Transfers are excluded from income and expense totals.</p>
+{% block content %}
+<div class="max-w-2xl w-full mx-auto">
+    {% if accounts|length < 2 %}
+    <div class="bg-white rounded-[14px] border border-zinc-200 shadow-sm p-8 text-center">
+        <div class="w-12 h-12 mx-auto rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-4">
+            <span class="material-symbols-outlined text-[24px]">info</span>
+        </div>
+        <h3 class="font-display font-semibold text-zinc-900 mb-1">You need at least two accounts</h3>
+        <p class="text-sm text-zinc-500 mb-5">Transfers move money between accounts. Add another account to enable transfers.</p>
+        <a href="{{ url_for('accounts') }}"
+           class="inline-flex items-center gap-2 bg-[#3b5bdb] hover:bg-[#3346b5] text-white font-medium text-sm px-5 py-2.5 rounded-lg transition-colors shadow-sm">
+            <span class="material-symbols-outlined text-[18px]">add</span>
+            Add an account
+        </a>
+    </div>
+    {% else %}
+    <section class="bg-white rounded-[14px] border border-zinc-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-zinc-200">
+            <h3 class="font-display font-semibold text-zinc-900">New transfer</h3>
+            <p class="text-xs text-zinc-500 mt-0.5">Cross-currency transfers convert via the FX rate on the transfer date.</p>
+        </div>
+        <form method="POST" action="{{ url_for('transfer') }}" class="p-6 space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                    <label for="from_account_id" class="text-xs font-medium text-zinc-600">From</label>
+                    <select id="from_account_id" name="from_account_id" required
+                            class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                        {% for acc in accounts %}
+                            <option value="{{ acc.id }}">{{ acc.name }} ({{ acc.currency }}) {{ "%.2f"|format(acc.balance) }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="space-y-1.5">
+                    <label for="to_account_id" class="text-xs font-medium text-zinc-600">To</label>
+                    <select id="to_account_id" name="to_account_id" required
+                            class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                        {% for acc in accounts %}
+                            <option value="{{ acc.id }}">{{ acc.name }} ({{ acc.currency }})</option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
 
-            {% with messages = get_flashed_messages() %}
-                {% if messages %}
-                    <div class="flash-messages">
-                        {% for message in messages %}
-                            <div class="alert alert-success">{{ message }}</div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            {% endwith %}
-
-            {% if accounts|length < 2 %}
-                <div class="alert alert-info">
-                    <div>
-                        <p>You need at least two accounts to make a transfer.</p>
-                        <a class="btn btn-primary btn-sm alert-cta" href="{{ url_for('accounts') }}">Add an account</a>
-                    </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                    <label for="amount" class="text-xs font-medium text-zinc-600">Amount</label>
+                    <input type="number" id="amount" name="amount" step="0.01" min="0.01" placeholder="0.00" required
+                           class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 tabular-nums text-right">
+                    <p class="text-xs text-zinc-400">In the source currency</p>
                 </div>
-            {% else %}
-                <section class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">New transfer</h3>
-                    </div>
-                    <div class="card-body">
-                        <form method="POST" action="{{ url_for('transfer') }}">
-                            <div class="field">
-                                <label for="from_account_id">From</label>
-                                <select id="from_account_id" name="from_account_id" required>
-                                    {% for acc in accounts %}
-                                        <option value="{{ acc.id }}">{{ acc.name }} ({{ acc.currency }}) {{ "%.2f"|format(acc.balance) }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
+                <div class="space-y-1.5">
+                    <label for="date" class="text-xs font-medium text-zinc-600">Date</label>
+                    <input type="date" id="date" name="date" value="{{ today }}" required
+                           class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 tabular-nums">
+                </div>
+            </div>
 
-                            <div class="field">
-                                <label for="to_account_id">To</label>
-                                <select id="to_account_id" name="to_account_id" required>
-                                    {% for acc in accounts %}
-                                        <option value="{{ acc.id }}">{{ acc.name }} ({{ acc.currency }})</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
+            <div class="space-y-1.5">
+                <label for="description" class="text-xs font-medium text-zinc-600">Description</label>
+                <input type="text" id="description" name="description" placeholder="Optional note"
+                       class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 placeholder-zinc-400">
+            </div>
 
-                            <div class="field">
-                                <label for="amount">Amount</label>
-                                <input type="number" id="amount" name="amount" step="0.01" min="0.01" placeholder="0.00" required>
-                                <p class="help">Cross currency transfers convert via the FX rate on the transfer date.</p>
-                            </div>
-
-                            <div class="field">
-                                <label for="date">Date</label>
-                                <input type="date" id="date" name="date" value="{{ today }}" required>
-                            </div>
-
-                            <div class="field">
-                                <label for="description">Description</label>
-                                <input type="text" id="description" name="description" placeholder="Optional note">
-                                <p class="help">Optional. Shown alongside the transfer.</p>
-                            </div>
-
-                            <div class="transfer-actions">
-                                <button type="submit" class="btn btn-primary">Transfer</button>
-                            </div>
-                        </form>
-                    </div>
-                </section>
-            {% endif %}
-
-            <a class="back-link" href="{{ url_for('dashboard') }}">Back to dashboard</a>
-        </div>
-    </div>
-</body>
-</html>
+            <div class="flex justify-end pt-2">
+                <button type="submit"
+                        class="inline-flex items-center gap-2 bg-[#3b5bdb] hover:bg-[#3346b5] text-white font-medium text-sm px-6 py-2.5 rounded-lg transition-colors shadow-sm">
+                    <span class="material-symbols-outlined text-[18px]">sync_alt</span>
+                    Transfer
+                </button>
+            </div>
+        </form>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

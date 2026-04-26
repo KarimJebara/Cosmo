@@ -1,225 +1,228 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Dashboard. Cosmo</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
-</head>
-<body>
-    <!-- Navbar -->
-    <div class="navbar">
-        <div class="navbar-brand">
-            <div class="navbar-avatar">{{ session.username[0].upper() if session.username else 'U' }}</div>
-            <strong>Cosmo</strong>
-        </div>
-        <div class="navbar-timeframe">
-            <label for="timeframe" class="navbar-control-label">Timeframe</label>
-            <select id="timeframe" class="navbar-select" onchange="changeTimeframe(this.value)">
-                <option value="1" {% if timeframe_months == 1 %}selected{% endif %}>1 Month</option>
-                <option value="2" {% if timeframe_months == 2 %}selected{% endif %}>2 Months</option>
-                <option value="3" {% if timeframe_months == 3 %}selected{% endif %}>3 Months</option>
-                <option value="6" {% if timeframe_months == 6 %}selected{% endif %}>6 Months</option>
-                <option value="9" {% if timeframe_months == 9 %}selected{% endif %}>9 Months</option>
-                <option value="12" {% if timeframe_months == 12 %}selected{% endif %}>12 Months</option>
-            </select>
-            <label for="currency" class="navbar-control-label">Currency</label>
-            <select id="currency" class="navbar-select" onchange="changeCurrency(this.value)">
-                <option value="EUR" {% if session.get('currency', 'EUR') == 'EUR' %}selected{% endif %}>EUR (€)</option>
-                <option value="GBP" {% if session.get('currency') == 'GBP' %}selected{% endif %}>GBP (£)</option>
-                <option value="USD" {% if session.get('currency') == 'USD' %}selected{% endif %}>USD ($)</option>
-            </select>
-        </div>
-        <div class="navbar-nav">
-            <a href="{{ url_for('dashboard') }}" class="active">Dashboard</a>
-            <a href="{{ url_for('accounts') }}">Accounts</a>
-            <a href="{{ url_for('income') }}">Income</a>
-            <a href="{{ url_for('expenses') }}">Expenses</a>
-            <a href="{{ url_for('budgets') }}">Budgets</a>
-            <a href="{{ url_for('reports') }}">Reports</a>
-            <a href="{{ url_for('graphs_stats') }}">Analytics</a>
-            <a href="{{ url_for('rules') }}">Rules</a>
-            <a href="{{ url_for('revolut_import') }}">Import</a>
-            <a href="{{ url_for('logout') }}" class="navbar-logout">Logout</a>
+{% extends "_layout.html" %}
+{% set active_page = 'dashboard' %}
+{% block title %}Dashboard | Cosmo{% endblock %}
+{% block header_title %}Overview{% endblock %}
+{% block header_subtitle %}
+<span class="hidden md:inline-block text-sm text-zinc-500 border-l border-zinc-200 pl-4">
+    Welcome back, {{ session.username }}
+</span>
+{% endblock %}
+{% block header_actions %}
+<form method="POST" action="" id="timeframeForm" class="hidden md:block m-0">
+    <select id="timeframe" onchange="changeTimeframe(this.value)"
+            class="text-sm font-medium text-zinc-700 bg-white border border-zinc-200 rounded-md px-3 py-1.5 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
+        <option value="1"  {% if timeframe_months == 1  %}selected{% endif %}>Last 30 days</option>
+        <option value="3"  {% if timeframe_months == 3  %}selected{% endif %}>Last 3 months</option>
+        <option value="6"  {% if timeframe_months == 6  %}selected{% endif %}>Last 6 months</option>
+        <option value="12" {% if timeframe_months == 12 %}selected{% endif %}>Last 12 months</option>
+    </select>
+</form>
+<script>
+    function changeTimeframe(months) {
+        fetch('/set_timeframe/' + months, { method: 'POST' }).then(() => window.location.reload());
+    }
+</script>
+{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+{% endblock %}
+
+{% block content %}
+<section class="flex flex-col gap-6">
+    <div>
+        <h2 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 font-label">Net balance</h2>
+        <div class="text-[44px] font-bold text-zinc-900 font-display tabular-nums tracking-tight leading-none">
+            {{ balance|money }}
+            <span class="text-2xl text-zinc-400 font-medium ml-2">EUR</span>
         </div>
     </div>
 
-    <script>
-    function changeTimeframe(months) {
-        fetch('/set_timeframe/' + months, { method: 'POST' })
-            .then(() => window.location.reload());
-    }
-    function changeCurrency(currency) {
-        fetch('/set_currency/' + currency, { method: 'POST' })
-            .then(() => window.location.reload());
-    }
-    </script>
-
-    <div class="container container-lg">
-        {% with messages = get_flashed_messages() %}
-          {% if messages %}
-            <div class="flash-messages">
-            {% for message in messages %}
-              <div class="alert alert-success">{{ message }}</div>
-            {% endfor %}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="bg-white rounded-[14px] border border-zinc-200 p-5 shadow-sm flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-zinc-500 uppercase tracking-wider font-label">Total income</span>
+                <span class="material-symbols-outlined text-emerald-500 text-[20px]">trending_up</span>
             </div>
-          {% endif %}
-        {% endwith %}
-
-        <!-- Page Header -->
-        <div class="page-header">
-            <div>
-                <h1>Welcome back, {{ session.username }}</h1>
-                <p class="muted">Here is the current state of your finances.</p>
+            <div class="text-2xl font-semibold text-zinc-900 tabular-nums font-display">
+                {{ total_income|money }} <span class="text-zinc-400 text-base font-medium">EUR</span>
+            </div>
+            {% if income_trend is not none and income_trend > 0 %}
+            <div class="text-xs font-medium {% if income_trend_direction == 'up' %}text-emerald-600{% else %}text-rose-600{% endif %}">
+                {% if income_trend_direction == 'up' %}+{% else %}-{% endif %}{{ "%.0f"|format(income_trend) }}% vs last month
+            </div>
+            {% endif %}
+        </div>
+        <div class="bg-white rounded-[14px] border border-zinc-200 p-5 shadow-sm flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-zinc-500 uppercase tracking-wider font-label">Total expenses</span>
+                <span class="material-symbols-outlined text-rose-500 text-[20px]">trending_down</span>
+            </div>
+            <div class="text-2xl font-semibold text-zinc-900 tabular-nums font-display">
+                {{ total_expenses|money }} <span class="text-zinc-400 text-base font-medium">EUR</span>
+            </div>
+            {% if expense_trend is not none and expense_trend > 0 %}
+            <div class="text-xs font-medium {% if expense_trend_direction == 'up' %}text-rose-600{% else %}text-emerald-600{% endif %}">
+                {% if expense_trend_direction == 'up' %}+{% else %}-{% endif %}{{ "%.0f"|format(expense_trend) }}% vs last month
+            </div>
+            {% endif %}
+        </div>
+        <div class="bg-white rounded-[14px] border border-zinc-200 p-5 shadow-sm flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-zinc-500 uppercase tracking-wider font-label">Net change</span>
+                <span class="material-symbols-outlined text-zinc-400 text-[20px]">balance</span>
+            </div>
+            <div class="text-2xl font-semibold tabular-nums font-display {% if balance >= 0 %}text-emerald-600{% else %}text-rose-600{% endif %}">
+                {% if balance >= 0 %}+{% endif %}{{ balance|money }}
+                <span class="text-zinc-400 text-base font-medium">EUR</span>
             </div>
         </div>
+    </div>
+</section>
 
-        <!-- Net Balance Hero -->
-        <div class="card balance-hero">
-            <span class="card-title">Net balance</span>
-            <span class="balance-hero-value">€{{ "%.2f"|format(balance) }}</span>
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+    <a href="{{ url_for('income') }}" class="bg-white rounded-[14px] border border-zinc-200 p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4">
+        <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <span class="material-symbols-outlined text-[22px]">add_circle</span>
         </div>
-
-        <!-- KPI Stats -->
-        <div class="kpi-grid">
-            <div class="card kpi-card">
-                <span class="card-title">Total income</span>
-                <span class="card-value">€{{ "%.2f"|format(total_income) }}</span>
-            </div>
-            <div class="card kpi-card">
-                <span class="card-title">Total expenses</span>
-                <span class="card-value">€{{ "%.2f"|format(total_expenses) }}</span>
-            </div>
-            <div class="card kpi-card">
-                <span class="card-title">Net change</span>
-                <span class="card-value">€{{ "%.2f"|format(total_income - total_expenses) }}</span>
-            </div>
+        <div>
+            <div class="font-semibold text-zinc-900">Add income</div>
+            <div class="text-xs text-zinc-500">Salary, freelance, refunds</div>
         </div>
-
-        <!-- Quick Actions -->
-        <div class="quick-actions-row">
-            <a href="{{ url_for('income') }}" class="btn btn-ghost">Add income</a>
-            <a href="{{ url_for('expenses') }}" class="btn btn-ghost">Add expense</a>
-            <a href="{{ url_for('budgets') }}" class="btn btn-ghost">Manage budgets</a>
-            <a href="{{ url_for('reports') }}" class="btn btn-ghost">View reports</a>
+    </a>
+    <a href="{{ url_for('expenses') }}" class="bg-white rounded-[14px] border border-zinc-200 p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4">
+        <div class="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+            <span class="material-symbols-outlined text-[22px]">remove_circle</span>
         </div>
-
-        <!-- Charts -->
-        <div class="dashboard-charts">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title-h">Spending breakdown</h3>
-                </div>
-                <div class="card-body">
-                    <div class="chart-frame">
-                        <canvas id="categoryChart"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title-h">Summary</h3>
-                </div>
-                <div class="card-body">
-                    <dl class="summary-list">
-                        <div class="summary-row">
-                            <dt>Total income</dt>
-                            <dd>€{{ "%.2f"|format(total_income) }}</dd>
-                        </div>
-                        <div class="summary-row">
-                            <dt>Total expenses</dt>
-                            <dd>€{{ "%.2f"|format(total_expenses) }}</dd>
-                        </div>
-                        <div class="summary-row">
-                            <dt>Net balance</dt>
-                            <dd>€{{ "%.2f"|format(balance) }}</dd>
-                        </div>
-                    </dl>
-                </div>
-            </div>
+        <div>
+            <div class="font-semibold text-zinc-900">Add expense</div>
+            <div class="text-xs text-zinc-500">Spending across all currencies</div>
         </div>
-
-        <!-- Recent Transactions -->
-        {% if recent_transactions %}
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title-h">Recent transactions</h3>
-                <a href="{{ url_for('reports') }}" class="btn btn-ghost btn-sm">See all</a>
-            </div>
-            <div class="card-body">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Description</th>
-                            <th>Category</th>
-                            <th>Type</th>
-                            <th class="text-right">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for transaction in recent_transactions %}
-                        <tr>
-                            <td>{{ transaction.formatted_date }}</td>
-                            <td>{{ transaction.description if transaction.description else transaction.category }}</td>
-                            <td>{{ transaction.category }}</td>
-                            <td>
-                                {% if transaction.type == 'income' %}
-                                <span class="badge badge-success">Income</span>
-                                {% else %}
-                                <span class="badge badge-danger">Expense</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-right">
-                                {% if transaction.type == 'income' %}+{% else %}-{% endif %}{{ transaction.amount|format_with_conversion(transaction.currency) }}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+    </a>
+    <a href="{{ url_for('transfer') }}" class="bg-white rounded-[14px] border border-zinc-200 p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4">
+        <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <span class="material-symbols-outlined text-[22px]">sync_alt</span>
         </div>
+        <div>
+            <div class="font-semibold text-zinc-900">Move money</div>
+            <div class="text-xs text-zinc-500">Transfer between accounts</div>
+        </div>
+    </a>
+</section>
+
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <div class="bg-white rounded-[14px] border border-zinc-200 p-6 shadow-sm flex flex-col h-[360px]">
+        <h3 class="text-sm font-semibold text-zinc-900 mb-4">Spending by category</h3>
+        {% if category_labels %}
+            <div class="flex-1 relative">
+                <canvas id="categoryChart"></canvas>
+            </div>
         {% else %}
-        <div class="card">
-            <div class="card-body empty-state">
-                <p>No transactions yet.</p>
-                <p class="muted">Start by adding <a href="{{ url_for('income') }}">income</a> or <a href="{{ url_for('expenses') }}">expenses</a>.</p>
-            </div>
-        </div>
+            <div class="flex-1 flex items-center justify-center text-sm text-zinc-400">No expenses in this timeframe</div>
         {% endif %}
     </div>
+    <div class="bg-white rounded-[14px] border border-zinc-200 p-6 shadow-sm flex flex-col">
+        <h3 class="text-sm font-semibold text-zinc-900 mb-4">Summary</h3>
+        <dl class="divide-y divide-zinc-100 text-sm">
+            <div class="flex justify-between py-3">
+                <dt class="text-zinc-500">Total income</dt>
+                <dd class="font-medium tabular-nums text-emerald-600">+{{ total_income|money }} EUR</dd>
+            </div>
+            <div class="flex justify-between py-3">
+                <dt class="text-zinc-500">Total expenses</dt>
+                <dd class="font-medium tabular-nums text-rose-600">-{{ total_expenses|money }} EUR</dd>
+            </div>
+            <div class="flex justify-between py-3">
+                <dt class="text-zinc-500">Net balance</dt>
+                <dd class="font-semibold tabular-nums text-zinc-900">{{ balance|money }} EUR</dd>
+            </div>
+            <div class="flex justify-between py-3">
+                <dt class="text-zinc-500">Timeframe</dt>
+                <dd class="font-medium text-zinc-900">{% if timeframe_months == 1 %}This month{% else %}Last {{ timeframe_months }} months{% endif %}</dd>
+            </div>
+        </dl>
+    </div>
+</section>
 
-    <script>
-        const categoryCtx = document.getElementById('categoryChart').getContext('2d');
-        new Chart(categoryCtx, {
-            type: 'doughnut',
-            data: {
-                labels: {{ category_labels|tojson }},
-                datasets: [{
-                    data: {{ category_values|tojson }},
-                    backgroundColor: ['#3b5bdb', '#14b8a6', '#f59e0b', '#10b981', '#6366f1', '#71717a', '#d97706', '#475569', '#0ea5e9', '#a16207'],
-                    borderColor: '#ffffff',
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 15,
-                            font: { size: 12 }
-                        }
-                    }
+<section class="bg-white rounded-[14px] border border-zinc-200 shadow-sm overflow-hidden flex flex-col">
+    <div class="p-5 border-b border-zinc-100 flex justify-between items-center">
+        <h3 class="text-sm font-semibold text-zinc-900">Recent transactions</h3>
+        <a class="text-sm font-medium text-[#3b5bdb] hover:text-[#2d3a8c] transition-colors" href="{{ url_for('reports') }}">View all</a>
+    </div>
+    {% if recent_transactions %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-zinc-700">
+            <thead class="bg-zinc-50/50 text-[12px] uppercase text-zinc-500 tracking-wider font-medium border-b border-zinc-200">
+                <tr>
+                    <th class="px-6 py-3 font-medium">Date</th>
+                    <th class="px-6 py-3 font-medium">Description</th>
+                    <th class="px-6 py-3 font-medium">Category</th>
+                    <th class="px-6 py-3 font-medium">Type</th>
+                    <th class="px-6 py-3 font-medium text-right">Amount</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-zinc-100 tabular-nums">
+                {% for transaction in recent_transactions %}
+                <tr class="hover:bg-zinc-50/50 transition-colors">
+                    <td class="px-6 py-3.5 whitespace-nowrap text-zinc-500">{{ transaction.formatted_date }}</td>
+                    <td class="px-6 py-3.5 font-medium text-zinc-900">{{ transaction.description if transaction.description else transaction.category }}</td>
+                    <td class="px-6 py-3.5">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-zinc-100 text-zinc-600">{{ transaction.category }}</span>
+                    </td>
+                    <td class="px-6 py-3.5">
+                        {% if transaction.type == 'income' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700">Income</span>
+                        {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-50 text-rose-700">Expense</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-3.5 text-right font-medium {% if transaction.type == 'income' %}text-emerald-600{% else %}text-zinc-900{% endif %}">
+                        {% if transaction.type == 'income' %}+{% else %}-{% endif %}{{ transaction.amount|format_with_conversion(transaction.currency) }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="p-8 text-center">
+        <p class="text-zinc-500 text-sm">No transactions yet.</p>
+        <p class="text-xs text-zinc-400 mt-1">
+            Start by adding <a class="text-[#3b5bdb] hover:underline" href="{{ url_for('income') }}">income</a> or
+            <a class="text-[#3b5bdb] hover:underline" href="{{ url_for('expenses') }}">expenses</a>.
+        </p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if category_labels %}
+<script>
+    const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+    new Chart(categoryCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ category_labels|tojson }},
+            datasets: [{
+                data: {{ category_values|tojson }},
+                backgroundColor: ['#3b5bdb', '#6366f1', '#a5b4fc', '#14b8a6', '#f59e0b', '#10b981', '#71717a', '#d97706', '#475569', '#0ea5e9'],
+                borderColor: '#ffffff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '62%',
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: { usePointStyle: true, padding: 14, font: { size: 12 } }
                 }
             }
-        });
-    </script>
-</body>
-</html>
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}
