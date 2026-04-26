@@ -3,136 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Revolut Import</title>
+    <title>Import Transactions - Cosmo</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
     <style>
-        .import-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        .import-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e5e7eb;
-        }
-        .import-card h2 {
-            font-size: 1.25rem;
-            margin-bottom: 1rem;
-            color: #1f2937;
-        }
-        .guide-steps {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        .guide-steps li {
-            padding: 0.5rem 0;
-            padding-left: 1.75rem;
-            position: relative;
-            color: #4b5563;
-            line-height: 1.5;
-            font-size: 0.95rem;
-        }
-        .guide-steps li:before {
-            content: attr(data-step);
-            position: absolute;
-            left: 0;
-            width: 1.25rem;
-            height: 1.25rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 50%;
+        .source-list {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7rem;
-            font-weight: bold;
+            flex-wrap: wrap;
+            gap: var(--sp-2);
         }
-        .upload-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            border: 2px solid #e5e7eb;
-            margin-bottom: 1.5rem;
-        }
-        .upload-card h3 {
-            margin-bottom: 1rem;
-            color: #1f2937;
-            font-size: 1.1rem;
-        }
-        .form-group {
-            margin-bottom: 1rem;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: #374151;
-            font-size: 0.95rem;
-        }
-        .form-group input[type="file"] {
+        .upload-input {
             display: block;
             width: 100%;
-            padding: 0.75rem;
-            border: 2px dashed #d1d5db;
-            border-radius: 8px;
-            background: #f9fafb;
+            padding: var(--sp-3);
+            border: 1px solid var(--c-border);
+            border-radius: var(--r-md);
+            background: var(--c-surface-2);
+            color: var(--c-text);
+            font-size: 14px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.9rem;
+            transition: border-color 120ms ease, background 120ms ease;
         }
-        .form-group input[type="file"]:hover {
-            border-color: #667eea;
-            background: #f3f4f6;
+        .upload-input:hover {
+            border-color: var(--c-border-strong);
+            background: var(--c-surface);
         }
-        .upload-note {
-            font-size: 0.8rem;
-            color: #6b7280;
-            margin-top: 0.5rem;
+        .upload-input:focus {
+            outline: none;
+            border-color: var(--c-brand);
+            box-shadow: 0 0 0 3px var(--c-brand-soft);
         }
-        .btn-submit {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .btn-submit:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
-        }
-        @media (max-width: 768px) {
-            .import-section {
-                grid-template-columns: 1fr;
-            }
+        .card-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--c-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin: 0 0 var(--sp-3) 0;
         }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
     <div class="navbar">
         <div class="navbar-brand">
             <div class="navbar-avatar">{{ session.username[0].upper() if session.username else 'U' }}</div>
             <strong>Cosmo</strong>
-        </div>
-        <div class="navbar-timeframe">
-            <label for="timeframe" style="margin-right: 8px; font-size: 14px; color: #666;">Timeframe:</label>
-            <select id="timeframe" onchange="changeTimeframe(this.value)" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ddd; background: white; cursor: pointer;">
-                <option value="1" {% if timeframe_months == 1 %}selected{% endif %}>1 Month</option>
-                <option value="2" {% if timeframe_months == 2 %}selected{% endif %}>2 Months</option>
-                <option value="3" {% if timeframe_months == 3 %}selected{% endif %}>3 Months</option>
-                <option value="6" {% if timeframe_months == 6 %}selected{% endif %}>6 Months</option>
-                <option value="9" {% if timeframe_months == 9 %}selected{% endif %}>9 Months</option>
-                <option value="12" {% if timeframe_months == 12 %}selected{% endif %}>12 Months</option>
-            </select>
         </div>
         <div class="navbar-nav">
             <a href="{{ url_for('dashboard') }}">Dashboard</a>
@@ -140,89 +54,60 @@
             <a href="{{ url_for('expenses') }}">Expenses</a>
             <a href="{{ url_for('budgets') }}">Budgets</a>
             <a href="{{ url_for('reports') }}">Reports</a>
-            <a href="{{ url_for('graphs_stats') }}">Graphs & Stats</a>
-            <a href="{{ url_for('revolut_import') }}" class="active">Revolut Import</a>
+            <a href="{{ url_for('graphs_stats') }}">Analytics</a>
+            <a href="{{ url_for('rules') }}">Rules</a>
+            <a href="{{ url_for('revolut_import') }}" class="active">Import</a>
             <a href="{{ url_for('logout') }}" style="margin-left: auto;">Logout ({{ session.username }})</a>
         </div>
     </div>
 
-    <script>
-    function changeTimeframe(months) {
-        fetch('/set_timeframe/' + months, { method: 'POST' })
-            .then(() => window.location.reload());
-    }
-    </script>
-
     <div class="container container-lg">
-        <!-- Page Header -->
         <div class="page-header">
             <div>
-                <h1>Import Revolut Transactions</h1>
+                <h1>Import Transactions</h1>
+                <p class="muted">Upload a CSV from your bank. Cosmo creates the matching accounts, applies your category rules, and skips duplicates.</p>
             </div>
         </div>
 
         {% with messages = get_flashed_messages() %}
           {% if messages %}
             <div class="flash-messages">
-            {% for message in messages %}
-              <div class="alert alert-success">{{ message }}</div>
-            {% endfor %}
+                {% for message in messages %}
+                    <div class="alert alert-success">{{ message }}</div>
+                {% endfor %}
             </div>
           {% endif %}
         {% endwith %}
 
-        <!-- Upload Section -->
-        <div class="upload-card">
-            <h3>Upload Your CSV File</h3>
-            <form action="{{ url_for('revolut_import') }}" method="post" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label for="revolut_csv">Select Your Revolut Statement (Excel/CSV format)</label>
-                    <input type="file" id="revolut_csv" name="revolut_csv" accept=".csv,.xlsx" required>
-                    <p class="upload-note">Export your statement as Excel format from Revolut</p>
+        <div class="card">
+            <div class="card-body">
+                <p class="card-section-title">Supported sources</p>
+                <div class="source-list">
+                    <span class="badge badge-neutral">Revolut</span>
+                    <span class="badge badge-neutral">Wise</span>
+                    <span class="badge badge-neutral">N26</span>
+                    <span class="badge badge-neutral">Generic CSV</span>
                 </div>
-                <button type="submit" class="btn-submit">Import Transactions</button>
-            </form>
-        </div>
-
-        <!-- How to Export Guide -->
-        <div class="import-section">
-            <!-- Mobile Instructions -->
-            <div class="import-card">
-                <h2>Mobile Instructions</h2>
-                <ol class="guide-steps">
-                    <li data-step="1">Open Revolut</li>
-                    <li data-step="2">Sign in</li>
-                    <li data-step="3">Press on "More"</li>
-                    <li data-step="4">Press on "Statement"</li>
-                    <li data-step="5">Press on "Excel"</li>
-                    <li data-step="6">Choose the period (longer is preferable)</li>
-                    <li data-step="7">Press on "Generate"</li>
-                    <li data-step="8">Save it to your phone</li>
-                    <li data-step="9">Send it to your computer</li>
-                    <li data-step="10">Press "Choose file" above</li>
-                    <li data-step="11">Submit the file</li>
-                </ol>
-            </div>
-
-            <!-- Computer Instructions -->
-            <div class="import-card">
-                <h2>Computer Instructions</h2>
-                <ol class="guide-steps">
-                    <li data-step="1">Go to Revolut website</li>
-                    <li data-step="2">Sign in</li>
-                    <li data-step="3">Press on "Accounts"</li>
-                    <li data-step="4">Press on "Statement"</li>
-                    <li data-step="5">Press on "Excel"</li>
-                    <li data-step="6">Choose the period (longer is preferable)</li>
-                    <li data-step="7">Press on "Generate"</li>
-                    <li data-step="8">Save the file</li>
-                    <li data-step="9">Press "Choose file" above</li>
-                    <li data-step="10">Submit the file</li>
-                </ol>
             </div>
         </div>
 
-        <a class="back-link" href="{{ url_for('dashboard') }}" style="display: inline-block; margin-top: 2rem;">← Back to Dashboard</a>
+        <div class="card" style="margin-top: var(--sp-4);">
+            <div class="card-header">
+                <h2 class="card-title">Upload a file</h2>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('revolut_import') }}" method="post" enctype="multipart/form-data">
+                    <div class="field">
+                        <label for="revolut_csv">CSV file</label>
+                        <input class="upload-input" type="file" id="revolut_csv" name="revolut_csv" accept=".csv,.xlsx" required>
+                        <p class="help">Maximum 10 megabytes per file. CSV only.</p>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Upload and import</button>
+                </form>
+            </div>
+        </div>
+
+        <a class="back-link" href="{{ url_for('dashboard') }}">Back to Dashboard</a>
     </div>
 </body>
 </html>
