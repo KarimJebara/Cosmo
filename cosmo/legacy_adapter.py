@@ -200,12 +200,22 @@ def add_transaction(
             fx_rate_used = rate
 
     with get_session() as session:
-        account = AccountRepo(session).get_default_for_user(user_id)
-        if account is None:
-            account = AccountRepo(session).create(
-                user_id=user_id, name="Default", currency=base_currency
-            )
-        account_id = account.id
+        accounts_repo = AccountRepo(session)
+        # Prefer an existing non-archived account whose currency matches the
+        # transaction. Falls back to the default (first non-archived) account
+        # so legacy single-account users keep working.
+        all_accounts = accounts_repo.list_for_user(user_id)
+        ccy_upper = currency.upper()
+        match = next((a for a in all_accounts if a.currency.upper() == ccy_upper), None)
+        if match is not None:
+            account_id = match.id
+        else:
+            default = accounts_repo.get_default_for_user(user_id)
+            if default is None:
+                default = accounts_repo.create(
+                    user_id=user_id, name="Default", currency=base_currency
+                )
+            account_id = default.id
 
         category_obj = CategoryRepo(session).get_or_create(user_id, category, type)
 
