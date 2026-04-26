@@ -27,7 +27,7 @@ def test_signup_duplicate_username(client):
         'confirm_password': 'newpass'
     }, follow_redirects=True)
 
-    assert b'already exists' in response.data
+    assert b'already taken' in response.data
 
 
 def test_signup_short_password(client):
@@ -82,7 +82,7 @@ def test_logout(authenticated_client):
     """Test user logout and session clearing."""
     response = authenticated_client.get('/logout', follow_redirects=True)
 
-    assert b'logged out' in response.data or b'Goodbye' in response.data or response.status_code == 200
+    assert b'Signed out' in response.data or b'Signed out' in response.data or response.status_code == 200
 
     response = authenticated_client.get('/dashboard', follow_redirects=True)
     assert 'login' in response.request.path.lower() or b'Login' in response.data

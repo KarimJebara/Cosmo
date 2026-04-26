@@ -9,7 +9,7 @@ def test_add_expense_valid_data(authenticated_client):
     }, follow_redirects=True)
 
     assert response.status_code == 200
-    assert b'Expense added successfully' in response.data
+    assert b'Expense added' in response.data
 
 def test_add_expense_missing_date(authenticated_client):
     response = authenticated_client.post('/expenses', data={
@@ -84,7 +84,7 @@ def test_add_expense_with_description(authenticated_client):
     }, follow_redirects=True)
 
     assert response.status_code == 200
-    assert b'Expense added successfully' in response.data
+    assert b'Expense added' in response.data
 
 def test_add_expense_without_description(authenticated_client):
     response = authenticated_client.post('/expenses', data={
@@ -95,7 +95,7 @@ def test_add_expense_without_description(authenticated_client):
     }, follow_redirects=True)
 
     assert response.status_code == 200
-    assert b'Expense added successfully' in response.data
+    assert b'Expense added' in response.data
 
 def test_add_expense_default_currency(authenticated_client):
     response = authenticated_client.post('/expenses', data={
@@ -106,7 +106,7 @@ def test_add_expense_default_currency(authenticated_client):
     }, follow_redirects=True)
 
     assert response.status_code == 200
-    assert b'Expense added successfully' in response.data
+    assert b'Expense added' in response.data
 
 def test_add_expense_custom_currency(authenticated_client):
     response = authenticated_client.post('/expenses', data={
@@ -118,7 +118,7 @@ def test_add_expense_custom_currency(authenticated_client):
     }, follow_redirects=True)
 
     assert response.status_code == 200
-    assert b'Expense added successfully' in response.data
+    assert b'Expense added' in response.data
 
 def test_delete_expense_valid_id(authenticated_client):
     authenticated_client.post('/expenses', data={
@@ -131,7 +131,7 @@ def test_delete_expense_valid_id(authenticated_client):
 
     response = authenticated_client.post('/delete_expense/2025-12-10/50.0/Albert%20Heijn', follow_redirects=True)
 
-    assert b'Expense deleted successfully' in response.data
+    assert b'Expense deleted' in response.data
 
 def test_delete_expense_invalid_id(authenticated_client):
     response = authenticated_client.post('/delete_expense/2025-12-10/999.0/Unknown%20Merchant', follow_redirects=True)
@@ -164,7 +164,7 @@ def test_change_expense_category_valid(authenticated_client):
         'new_category': 'Shopping'
     }, follow_redirects=True)
 
-    assert b'Category updated' in response.data
+    assert b'Category set' in response.data
 
 def test_change_expense_category_updates_all_same_merchant(authenticated_client):
     authenticated_client.post('/expenses', data={
@@ -187,7 +187,7 @@ def test_change_expense_category_updates_all_same_merchant(authenticated_client)
         'new_category': 'Shopping'
     }, follow_redirects=True)
 
-    assert b'2 transaction(s)' in response.data
+    assert b'2 matching transactions' in response.data
 
 def test_change_expense_category_missing_category(authenticated_client):
     authenticated_client.post('/expenses', data={
@@ -200,7 +200,7 @@ def test_change_expense_category_missing_category(authenticated_client):
 
     response = authenticated_client.post('/change_expense_category/2025-12-10/50.0/Albert%20Heijn', data={}, follow_redirects=True)
 
-    assert b'Please select a category' in response.data
+    assert b'Choose a category' in response.data
 
 def test_expense_auto_categorization(authenticated_client):
     authenticated_client.post('/expenses', data={

@@ -90,12 +90,12 @@ def test_signup_post_duplicate_username(client):
         'confirm_password': 'pass2'
     }, follow_redirects=True)
 
-    assert b'already exists' in response.data
+    assert b'already taken' in response.data
 
 def test_logout_clears_session(authenticated_client):
     response = authenticated_client.get('/logout', follow_redirects=True)
 
-    assert b'logged out' in response.data or b'Goodbye' in response.data
+    assert b'Signed out' in response.data or b'Signed out' in response.data
 
 def test_set_currency_updates_session(authenticated_client):
     response = authenticated_client.post('/set_currency/USD', follow_redirects=True)

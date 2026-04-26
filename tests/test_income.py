@@ -11,7 +11,7 @@ def test_add_income_valid(authenticated_client):
     }, follow_redirects=True)
 
     assert response.status_code == 200
-    assert b'Income added successfully' in response.data or b'added' in response.data
+    assert b'Income added' in response.data or b'added' in response.data
 
 
 def test_add_income_missing_fields(authenticated_client):
