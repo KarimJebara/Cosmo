@@ -1,88 +1,159 @@
-/*
+/* Dashboard page layout. Composition only. Foundation in base.css. */
 
-body {
-    font-family: 'Segoe UI', Arial, sans-serif;
-    background: #f4f6f8;
+/* Navbar select restyled to look like calm form input */
+.navbar-control-label {
+    font-size: 12px;
+    color: var(--c-text-muted);
+    margin: 0 6px 0 12px;
+    letter-spacing: 0.02em;
+}
+
+.navbar-control-label:first-child {
+    margin-left: 0;
+}
+
+.navbar-select {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border-strong);
+    border-radius: var(--r-sm);
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--c-text);
+    cursor: pointer;
+}
+
+.navbar-select:focus {
+    outline: none;
+    border-color: var(--c-brand);
+}
+
+.navbar-logout {
+    margin-left: auto;
+}
+
+/* Hero balance card */
+.balance-hero {
+    padding: var(--sp-6);
+    margin-bottom: var(--sp-5);
+    background: var(--c-surface);
+}
+
+.balance-hero .card-title {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--c-text-subtle);
+    margin-bottom: var(--sp-2);
+}
+
+.balance-hero-value {
+    display: block;
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--c-text);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+
+/* KPI grid */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-5);
+}
+
+.kpi-card {
+    padding: var(--sp-4) var(--sp-5);
+}
+
+.kpi-card .card-title {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--c-text-subtle);
+    margin-bottom: var(--sp-2);
+}
+
+.kpi-card .card-value {
+    display: block;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--c-text);
+    letter-spacing: -0.01em;
+}
+
+@media (max-width: 768px) {
+    .kpi-grid { grid-template-columns: 1fr; }
+}
+
+/* Quick actions row */
+.quick-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-5);
+}
+
+/* Two-column charts */
+.dashboard-charts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-5);
+    margin-bottom: var(--sp-5);
+}
+
+@media (max-width: 1024px) {
+    .dashboard-charts { grid-template-columns: 1fr; }
+}
+
+.chart-frame {
+    position: relative;
+    height: 280px;
+}
+
+/* Summary list */
+.summary-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-bottom: var(--sp-3);
+    border-bottom: 1px solid var(--c-border);
+}
+
+.summary-row:last-child { border-bottom: none; padding-bottom: 0; }
+
+.summary-row dt {
+    font-size: 13px;
+    color: var(--c-text-muted);
+}
+
+.summary-row dd {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--c-text);
     margin: 0;
 }
 
-.navbar {
-    background: #2d3748;
-    color: #fff;
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+/* Card title helper for h3 inside card-header */
+.card-title-h {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--c-text);
+    margin: 0;
 }
 
-.navbar a {
-    color: #fff;
-    text-decoration: none;
-    margin: 0 1rem;
-    font-weight: 500;
-}
+.text-right { text-align: right; }
 
-.container {
-    max-width: 800px;
-    margin: 2rem auto;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
-    padding: 2rem;
-}
-
-.stats {
-    display: flex;
-    gap: 2rem;
-    justify-content: center;
-    margin-bottom: 2rem;
-}
-
-.card {
-    background: #edf2f7;
-    border-radius: 8px;
-    padding: 1.5rem 2rem;
+.empty-state {
     text-align: center;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-    flex: 1;
-}
-
-.card strong {
-    font-size: 1.5rem;
-    color: #2b6cb0;
-}
-
-.actions {
-    text-align: right;
-    margin-bottom: 1rem;
-}
-
-.actions a {
-    background: #2b6cb0;
-    color: #fff;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    text-decoration: none;
-    font-weight: 500;
-    margin-left: 1rem;
-}
-
-ul {
-    list-style: none;
-    padding: 0;
-}
-
-li {
-    background: #f7fafc;
-    margin-bottom: 0.5rem;
-    padding: 0.75rem 1rem;
-    border-radius: 6px;
-}
-
-.flash {
-    background: #c6f6d5;
-    color: #22543d;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    margin-bottom: 1rem;
+    padding: var(--sp-6) var(--sp-4);
 }
