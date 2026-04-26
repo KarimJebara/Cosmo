@@ -1,139 +1,129 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Budgets | Cosmo</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='budgets.css') }}">
-</head>
-<body>
-    <nav class="navbar">
-        <div class="navbar-brand">
-            <div class="navbar-avatar">{{ session.username[0].upper() if session.username else 'U' }}</div>
-            <strong>Cosmo</strong>
-        </div>
-        <div class="navbar-nav">
-            <a href="{{ url_for('dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('accounts') }}">Accounts</a>
-            <a href="{{ url_for('income') }}">Income</a>
-            <a href="{{ url_for('expenses') }}">Expenses</a>
-            <a href="{{ url_for('budgets') }}" class="active">Budgets</a>
-            <a href="{{ url_for('reports') }}">Reports</a>
-            <a href="{{ url_for('graphs_stats') }}">Analytics</a>
-            <a href="{{ url_for('rules') }}">Rules</a>
-            <a href="{{ url_for('revolut_import') }}">Import</a>
-            <a href="{{ url_for('logout') }}" class="navbar-logout">Logout</a>
-        </div>
-    </nav>
+{% extends "_layout.html" %}
+{% set active_page = 'budgets' %}
+{% block title %}Budgets | Cosmo{% endblock %}
+{% block header_title %}Budgets{% endblock %}
+{% block header_subtitle %}
+<span class="hidden md:inline-block text-sm text-zinc-500 border-l border-zinc-200 pl-4">
+    Set monthly limits per category
+</span>
+{% endblock %}
+{% block header_actions %}
+<select id="timeframe" onchange="changeTimeframe(this.value)"
+        class="text-sm font-medium text-zinc-700 bg-white border border-zinc-200 rounded-md px-3 py-1.5 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
+    <option value="1"  {% if timeframe_months == 1  %}selected{% endif %}>Last 30 days avg</option>
+    <option value="3"  {% if timeframe_months == 3  %}selected{% endif %}>Last 3 months avg</option>
+    <option value="6"  {% if timeframe_months == 6  %}selected{% endif %}>Last 6 months avg</option>
+    <option value="12" {% if timeframe_months == 12 %}selected{% endif %}>Last 12 months avg</option>
+</select>
+<script>
+    function changeTimeframe(months) {
+        fetch('/set_timeframe/' + months, { method: 'POST' }).then(() => window.location.reload());
+    }
+</script>
+{% endblock %}
 
-    <div class="container container-lg">
-        <div class="page-header">
-            <div>
-                <h1>Budgets</h1>
-                <p class="muted">Set monthly limits per category and track progress.</p>
-            </div>
-        </div>
-
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for message in messages %}
-                        <div class="alert alert-success">{{ message }}</div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
-
-        {% if budgets %}
-            <div class="budget-grid">
-                {% for budget in budgets %}
-                    {% set pct = budget.percentage|int %}
-                    {% set bar_class = 'over' if pct >= 100 else ('warn' if pct >= 75 else '') %}
-                    <article class="card budget-card">
-                        <div class="card-header">
-                            <h3 class="card-title">{{ budget.category }}</h3>
-                            {% if pct >= 100 %}
-                                <span class="badge badge-danger">Over</span>
-                            {% elif pct >= 75 %}
-                                <span class="badge badge-neutral">Watch</span>
-                            {% else %}
-                                <span class="badge badge-success">On track</span>
-                            {% endif %}
-                        </div>
-                        <div class="card-body">
-                            <div class="budget-amounts">
-                                <span class="card-value">{{ "%.2f"|format(budget.spent) }}</span>
-                                <span class="muted">of {{ "%.2f"|format(budget.limit) }} EUR per month</span>
-                            </div>
-                            <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ pct }}">
-                                <div class="progress-bar {{ bar_class }}" style="width: {{ [pct, 100]|min }}%;"></div>
-                            </div>
-                            <div class="budget-meta">
-                                <span class="muted">
-                                    {{ pct }}% used. Monthly average over the last
-                                    {{ budget.months }} month{% if budget.months != 1 %}s{% endif %}.
-                                </span>
-                                <span class="{% if budget.remaining < 0 %}neg{% else %}pos{% endif %}">
-                                    {% if budget.remaining < 0 %}
-                                        {{ "%.2f"|format(budget.remaining|abs) }} EUR over per month
-                                    {% else %}
-                                        {{ "%.2f"|format(budget.remaining) }} EUR left per month
-                                    {% endif %}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="card-footer">
-                            <form method="POST" action="{{ url_for('delete_budget', budget_id=budget.id) }}" class="inline-form">
-                                <button type="submit" class="btn btn-ghost btn-sm" onclick="return confirm('Delete this budget?')">Delete</button>
-                            </form>
-                        </div>
-                    </article>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="card">
-                <div class="card-body">
-                    <p class="muted">No budgets yet. Create the first one below.</p>
-                </div>
-            </div>
-        {% endif %}
-
-        <section class="card budget-form-card">
-            <div class="card-header">
-                <h3 class="card-title">Set budget</h3>
-            </div>
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('budgets') }}">
-                    <div class="budget-form-row">
-                        <div class="field">
-                            <label for="category">Category</label>
-                            <select name="category" id="category" required>
-                                <option value="">Select a category</option>
-                                <option value="Food & Dining">Food and dining</option>
-                                <option value="Transportation">Transportation</option>
-                                <option value="Utilities">Utilities</option>
-                                <option value="Rent/Mortgage">Rent or mortgage</option>
-                                <option value="Entertainment">Entertainment</option>
-                                <option value="Shopping">Shopping</option>
-                                <option value="Healthcare">Healthcare</option>
-                                <option value="Education">Education</option>
-                                <option value="Insurance">Insurance</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label for="limit">Monthly limit</label>
-                            <input type="number" name="limit" id="limit" placeholder="0.00" step="0.01" min="0" required>
-                            <p class="help">Amount in EUR.</p>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Save budget</button>
-                </form>
-            </div>
-        </section>
-
-        <a class="back-link" href="{{ url_for('dashboard') }}">Back to dashboard</a>
+{% block content %}
+{% if budgets %}
+{% set on_track = budgets|selectattr('percentage', '<', 75)|list|length %}
+{% set watch = budgets|selectattr('percentage', '>=', 75)|rejectattr('percentage', '>=', 100)|list|length %}
+{% set over = budgets|selectattr('percentage', '>=', 100)|list|length %}
+<section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white rounded-[14px] border border-zinc-200 p-4 shadow-sm">
+        <div class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Limits set</div>
+        <div class="text-2xl font-bold text-zinc-900 mt-1 tabular-nums font-display">{{ budgets|length }}</div>
     </div>
-</body>
-</html>
+    <div class="bg-white rounded-[14px] border border-zinc-200 p-4 shadow-sm">
+        <div class="text-xs font-semibold text-emerald-600 uppercase tracking-wider">On track</div>
+        <div class="text-2xl font-bold text-emerald-600 mt-1 tabular-nums font-display">{{ on_track }}</div>
+    </div>
+    <div class="bg-white rounded-[14px] border border-zinc-200 p-4 shadow-sm">
+        <div class="text-xs font-semibold text-amber-600 uppercase tracking-wider">Watch list</div>
+        <div class="text-2xl font-bold text-amber-600 mt-1 tabular-nums font-display">{{ watch }}</div>
+    </div>
+    <div class="bg-white rounded-[14px] border border-zinc-200 p-4 shadow-sm">
+        <div class="text-xs font-semibold text-rose-600 uppercase tracking-wider">Over budget</div>
+        <div class="text-2xl font-bold text-rose-600 mt-1 tabular-nums font-display">{{ over }}</div>
+    </div>
+</section>
+
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for budget in budgets %}
+    {% set pct = budget.percentage|int %}
+    {% set bar_color = 'bg-rose-500' if pct >= 100 else ('bg-amber-500' if pct >= 75 else 'bg-emerald-500') %}
+    {% set badge_class = 'bg-rose-50 text-rose-700' if pct >= 100 else ('bg-amber-50 text-amber-700' if pct >= 75 else 'bg-emerald-50 text-emerald-700') %}
+    {% set badge_text = 'Over' if pct >= 100 else ('Watch' if pct >= 75 else 'On track') %}
+    <article class="bg-white rounded-[14px] border border-zinc-200 p-5 shadow-sm flex flex-col gap-3">
+        <div class="flex items-start justify-between">
+            <h3 class="font-semibold text-zinc-900 font-display">{{ budget.category }}</h3>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ badge_class }}">{{ badge_text }}</span>
+        </div>
+        <div class="flex items-baseline justify-between">
+            <span class="text-2xl font-bold text-zinc-900 tabular-nums font-display">{{ budget.spent|money(0) }}</span>
+            <span class="text-xs text-zinc-500 tabular-nums">of {{ budget.limit|money(0) }} EUR/mo</span>
+        </div>
+        <div class="w-full bg-zinc-100 rounded-full h-2">
+            <div class="{{ bar_color }} h-2 rounded-full transition-all" style="width: {{ [pct, 100]|min }}%;"></div>
+        </div>
+        <div class="flex items-center justify-between text-xs">
+            <span class="text-zinc-500 tabular-nums">{{ pct }}% used</span>
+            <span class="font-medium tabular-nums {% if budget.remaining < 0 %}text-rose-600{% else %}text-emerald-600{% endif %}">
+                {% if budget.remaining < 0 %}
+                    {{ budget.remaining|abs|money(0) }} EUR over
+                {% else %}
+                    {{ budget.remaining|money(0) }} EUR left
+                {% endif %}
+            </span>
+        </div>
+        <div class="pt-2 border-t border-zinc-100">
+            <span class="text-[11px] text-zinc-400">Avg over last {{ budget.months }} month{% if budget.months != 1 %}s{% endif %}</span>
+            <form method="POST" action="{{ url_for('delete_budget', budget_id=budget.id) }}" class="inline-block float-right m-0">
+                <button type="submit" class="text-[11px] text-zinc-400 hover:text-rose-500 transition-colors"
+                        onclick="return confirm('Delete this budget?')">Delete</button>
+            </form>
+        </div>
+    </article>
+    {% endfor %}
+</section>
+{% else %}
+<div class="bg-white rounded-[14px] border border-zinc-200 p-8 text-center text-sm text-zinc-500">
+    No budgets yet. Create the first one below.
+</div>
+{% endif %}
+
+<section class="bg-white rounded-[14px] border border-zinc-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-zinc-200">
+        <h3 class="font-display font-semibold text-zinc-900">Set a budget</h3>
+        <p class="text-xs text-zinc-500 mt-0.5">Limit is checked against the rolling average of your spend.</p>
+    </div>
+    <form method="POST" action="{{ url_for('budgets') }}" class="p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="md:col-span-2 space-y-1.5">
+            <label for="category" class="text-xs font-medium text-zinc-600">Category</label>
+            <select name="category" id="category" required
+                    class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">Select a category</option>
+                <option value="Food & Dining">Food and dining</option>
+                <option value="Transportation">Transportation</option>
+                <option value="Utilities">Utilities</option>
+                <option value="Rent/Mortgage">Rent or mortgage</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Healthcare">Healthcare</option>
+                <option value="Education">Education</option>
+                <option value="Insurance">Insurance</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+        <div class="space-y-1.5">
+            <label for="limit" class="text-xs font-medium text-zinc-600">Monthly limit (EUR)</label>
+            <input type="number" name="limit" id="limit" placeholder="0.00" step="0.01" min="0" required
+                   class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 tabular-nums text-right">
+        </div>
+        <div class="md:col-span-3 flex justify-end">
+            <button type="submit"
+                    class="bg-[#3b5bdb] hover:bg-[#3346b5] text-white font-medium text-sm px-6 py-2.5 rounded-lg transition-colors shadow-sm">
+                Save budget
+            </button>
+        </div>
+    </form>
+</section>
+{% endblock %}

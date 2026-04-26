@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Cosmo{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..700,0..1,-25..200&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: "#eef2ff",
+                            100: "#e0e7ff",
+                            500: "#6366f1",
+                            600: "#3b5bdb",
+                            700: "#3346b5",
+                            800: "#2d3a8c"
+                        }
+                    },
+                    fontFamily: {
+                        headline: ["Plus Jakarta Sans", "sans-serif"],
+                        display: ["Plus Jakarta Sans", "sans-serif"],
+                        body: ["Inter", "sans-serif"],
+                        label: ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, h5, h6, .font-display, .font-headline { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .nav-active { background: rgb(238 242 255); color: rgb(59 91 219); font-weight: 600; }
+        .nav-active .material-symbols-outlined { font-variation-settings: 'FILL' 1, 'wght' 500; }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-zinc-50 font-body text-zinc-900 antialiased min-h-screen">
+
+<aside class="w-[240px] h-screen border-r border-zinc-200 bg-white fixed left-0 top-0 flex flex-col py-6 px-4 z-50">
+    <div class="flex items-center gap-3 px-2 mb-8">
+        <div class="w-9 h-9 rounded-full bg-zinc-900 text-white flex items-center justify-center font-bold text-base font-display">
+            {{ session.username[0].upper() if session.username else 'C' }}
+        </div>
+        <div>
+            <div class="text-lg font-bold text-zinc-900 tracking-tight font-display leading-none">Cosmo</div>
+            <div class="text-[11px] text-zinc-500 mt-1">Fintech for expats</div>
+        </div>
+    </div>
+
+    <nav class="flex-1 space-y-1 text-sm">
+        {% set links = [
+            ('dashboard',      'Dashboard',  'dashboard'),
+            ('accounts',       'Accounts',   'account_balance'),
+            ('income',         'Income',     'payments'),
+            ('expenses',       'Expenses',   'shopping_bag'),
+            ('transfer',       'Transfers',  'sync_alt'),
+            ('budgets',        'Budgets',    'savings'),
+            ('reports',        'Reports',    'description'),
+            ('graphs_stats',   'Analytics',  'query_stats'),
+            ('rules',          'Rules',      'rule'),
+            ('revolut_import', 'Import',     'cloud_upload')
+        ] %}
+        {% for endpoint, label, icon in links %}
+        <a href="{{ url_for(endpoint) }}"
+           class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {% if active_page == endpoint %}nav-active{% else %}text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50{% endif %}">
+            <span class="material-symbols-outlined text-[20px]">{{ icon }}</span>
+            <span class="font-medium">{{ label }}</span>
+        </a>
+        {% endfor %}
+    </nav>
+
+    <div class="mt-auto pt-4 border-t border-zinc-200 space-y-1">
+        <div class="flex items-center gap-3 px-3 py-2 rounded-lg text-zinc-900 font-medium">
+            <div class="w-7 h-7 rounded-full bg-zinc-200 text-zinc-700 flex items-center justify-center text-xs font-semibold">
+                {{ session.username[0].upper() if session.username else 'U' }}
+            </div>
+            <span class="text-sm truncate">{{ session.username or 'User' }}</span>
+        </div>
+        <a href="{{ url_for('logout') }}"
+           class="flex items-center gap-3 px-3 py-2 rounded-lg text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 transition-colors">
+            <span class="material-symbols-outlined text-[20px]">logout</span>
+            <span class="text-sm">Sign out</span>
+        </a>
+    </div>
+</aside>
+
+<div class="ml-[240px] flex flex-col min-h-screen">
+    <header class="sticky top-0 z-40 flex justify-between items-center px-8 h-16 bg-zinc-50/80 backdrop-blur-md border-b border-zinc-200">
+        <div class="flex items-center gap-4">
+            <h1 class="text-xl font-semibold text-zinc-900 font-display">{% block header_title %}Overview{% endblock %}</h1>
+            {% block header_subtitle %}{% endblock %}
+        </div>
+        <div class="flex items-center gap-3">
+            {% block header_actions %}{% endblock %}
+        </div>
+    </header>
+
+    <main class="flex-1 p-8 max-w-[1440px] mx-auto w-full flex flex-col gap-6">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="space-y-2">
+                    {% for category, message in messages %}
+                        {% set tone = 'bg-rose-50 text-rose-700 border-rose-200' if category == 'error' else
+                                       'bg-amber-50 text-amber-700 border-amber-200' if category == 'warning' else
+                                       'bg-indigo-50 text-indigo-700 border-indigo-200' if category == 'info' else
+                                       'bg-emerald-50 text-emerald-700 border-emerald-200' %}
+                        {% set icon = 'error' if category == 'error' else
+                                       'warning' if category == 'warning' else
+                                       'info' if category == 'info' else
+                                       'check_circle' %}
+                        <div class="flex items-center gap-2 px-4 py-3 rounded-lg border {{ tone }} text-sm font-medium">
+                            <span class="material-symbols-outlined text-[18px]">{{ icon }}</span>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

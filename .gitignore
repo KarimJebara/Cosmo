@@ -37,4 +37,5 @@ htmlcov/
 
 # OS
 .DS_Store
-Thumbs.db
+Thumbs.dbbudget_tracker.db
+stitch/

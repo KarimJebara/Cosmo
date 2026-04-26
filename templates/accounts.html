@@ -1,160 +1,88 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Accounts | Cosmo</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
-    <style>
-        .accounts-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: var(--sp-4);
-            margin-bottom: var(--sp-6);
-        }
-        .account-card { display: flex; flex-direction: column; gap: var(--sp-2); position: relative; }
-        .account-card.archived { opacity: 0.55; }
-        .account-card .card-header { align-items: flex-start; }
-        .account-balance { font-size: 1.75rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-        .account-balance.negative { color: var(--c-danger); }
-        .account-balance-base { font-size: 0.85rem; color: var(--c-text-muted); font-variant-numeric: tabular-nums; }
-        .account-card .card-footer {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: var(--sp-2);
-            font-size: 0.8rem;
-            color: var(--c-text-subtle);
-        }
-        .inline-form { display: inline; margin: 0; padding: 0; background: none; border: none; box-shadow: none; }
-        .new-account-row {
-            display: grid;
-            grid-template-columns: minmax(0, 2fr) 120px 160px auto;
-            gap: var(--sp-3);
-            align-items: end;
-        }
-        @media (max-width: 900px) {
-            .accounts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .new-account-row { grid-template-columns: 1fr 1fr; }
-        }
-        @media (max-width: 600px) {
-            .accounts-grid { grid-template-columns: 1fr; }
-            .new-account-row { grid-template-columns: 1fr; }
-        }
-    </style>
-</head>
-<body>
-    <nav class="navbar">
-        <div class="navbar-brand">
-            <div class="navbar-avatar">{{ session.username[0].upper() if session.username else 'U' }}</div>
-            <strong>Cosmo</strong>
-        </div>
-        <div class="navbar-nav">
-            <a href="{{ url_for('dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('accounts') }}" class="active">Accounts</a>
-            <a href="{{ url_for('income') }}">Income</a>
-            <a href="{{ url_for('expenses') }}">Expenses</a>
-            <a href="{{ url_for('budgets') }}">Budgets</a>
-            <a href="{{ url_for('reports') }}">Reports</a>
-            <a href="{{ url_for('graphs_stats') }}">Analytics</a>
-            <a href="{{ url_for('rules') }}">Rules</a>
-            <a href="{{ url_for('revolut_import') }}">Import</a>
-            <a href="{{ url_for('logout') }}" class="navbar-logout">Logout</a>
-        </div>
-    </nav>
+{% extends "_layout.html" %}
+{% set active_page = 'accounts' %}
+{% block title %}Accounts | Cosmo{% endblock %}
+{% block header_title %}Accounts{% endblock %}
+{% block header_subtitle %}
+<span class="hidden md:inline-block text-sm text-zinc-500 border-l border-zinc-200 pl-4">
+    One account per currency, transactions auto-route by currency
+</span>
+{% endblock %}
 
-    <div class="container container-lg">
-        <div class="page-header">
+{% block content %}
+{% if accounts %}
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+    {% for acc in accounts %}
+    <article class="bg-white rounded-[14px] border border-zinc-200 p-5 shadow-sm flex flex-col gap-4 {% if acc.archived %}opacity-60{% endif %}">
+        <div class="flex items-start justify-between">
             <div>
-                <h1>Accounts</h1>
-                <p class="muted">Each account holds a single currency. Imports route transactions to the matching account.</p>
+                <h3 class="font-semibold text-zinc-900 font-display">{{ acc.name }}</h3>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-zinc-100 text-zinc-600 mt-1">{{ acc.currency }}</span>
+            </div>
+            <div class="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[20px]">account_balance</span>
             </div>
         </div>
-
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for message in messages %}
-                        <div class="alert alert-success">{{ message }}</div>
-                    {% endfor %}
-                </div>
+        <div>
+            <div class="text-2xl font-bold tabular-nums {% if acc.balance < 0 %}text-rose-600{% else %}text-zinc-900{% endif %} font-display">
+                {{ acc.balance|money }} <span class="text-zinc-400 text-base font-medium">{{ acc.currency }}</span>
+            </div>
+            {% if acc.currency != 'EUR' %}
+            <div class="text-xs text-zinc-500 mt-1 tabular-nums">≈ {{ acc.balance_in_base|money }} EUR</div>
             {% endif %}
-        {% endwith %}
-
-        {% if accounts %}
-            <div class="accounts-grid">
-                {% for acc in accounts %}
-                    <article class="card account-card {% if acc.archived %}archived{% endif %}">
-                        <div class="card-header">
-                            <div>
-                                <h3 class="card-title">{{ acc.name }}</h3>
-                                <span class="badge badge-neutral">{{ acc.currency }}</span>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="account-balance {% if acc.balance < 0 %}negative{% endif %}">
-                                {{ "%.2f"|format(acc.balance) }} {{ acc.currency }}
-                            </div>
-                            {% if acc.currency != 'EUR' %}
-                                <div class="account-balance-base">In EUR base: {{ "%.2f"|format(acc.balance_in_base) }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="card-footer">
-                            <span>{{ acc.transaction_count }} transaction{% if acc.transaction_count != 1 %}s{% endif %}</span>
-                            {% if not acc.archived %}
-                                <form method="POST" action="{{ url_for('archive_account', account_id=acc.id) }}" class="inline-form"
-                                      onsubmit="return confirm('Archive this account? Its transactions remain.');">
-                                    <button type="submit" class="btn btn-ghost btn-sm">Archive</button>
-                                </form>
-                            {% else %}
-                                <span class="muted">Archived</span>
-                            {% endif %}
-                        </div>
-                    </article>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="card">
-                <div class="card-body">
-                    <p class="muted">No accounts yet. Add one below.</p>
-                </div>
-            </div>
-        {% endif %}
-
-        <section class="card">
-            <div class="card-header">
-                <h3 class="card-title">Add account</h3>
-            </div>
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('accounts') }}">
-                    <div class="new-account-row">
-                        <div class="field">
-                            <label for="name">Name</label>
-                            <input type="text" id="name" name="name" placeholder="UK checking" required>
-                        </div>
-                        <div class="field">
-                            <label for="currency">Currency</label>
-                            <input type="text" id="currency" name="currency" value="EUR" maxlength="3" pattern="[A-Za-z]{3}" required>
-                            <p class="help">Three letter ISO code.</p>
-                        </div>
-                        <div class="field">
-                            <label for="type">Type</label>
-                            <select id="type" name="type">
-                                <option value="checking">Checking</option>
-                                <option value="savings">Savings</option>
-                                <option value="credit">Credit card</option>
-                                <option value="cash">Cash</option>
-                            </select>
-                        </div>
-                        <div class="field">
-                            <button type="submit" class="btn btn-primary">Create</button>
-                        </div>
-                    </div>
+        </div>
+        <div class="flex items-center justify-between pt-3 border-t border-zinc-100 text-xs text-zinc-500">
+            <span>{{ acc.transaction_count }} transaction{% if acc.transaction_count != 1 %}s{% endif %}</span>
+            {% if not acc.archived %}
+                <form method="POST" action="{{ url_for('archive_account', account_id=acc.id) }}" class="m-0"
+                      onsubmit="return confirm('Archive this account? Its transactions remain.');">
+                    <button type="submit" class="text-zinc-400 hover:text-rose-600 font-medium transition-colors">Archive</button>
                 </form>
-            </div>
-        </section>
+            {% else %}
+                <span class="text-zinc-400">Archived</span>
+            {% endif %}
+        </div>
+    </article>
+    {% endfor %}
+</section>
+{% else %}
+<div class="bg-white rounded-[14px] border border-zinc-200 p-8 text-center text-sm text-zinc-500">
+    No accounts yet. Add one below.
+</div>
+{% endif %}
 
-        <a class="back-link" href="{{ url_for('dashboard') }}">Back to dashboard</a>
+<section class="bg-white rounded-[14px] border border-zinc-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-zinc-200">
+        <h3 class="font-display font-semibold text-zinc-900">Add account</h3>
+        <p class="text-xs text-zinc-500 mt-0.5">A new account holds a single currency. Manual entries route here automatically when the currency matches.</p>
     </div>
-</body>
-</html>
+    <form method="POST" action="{{ url_for('accounts') }}" class="p-5 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="md:col-span-2 space-y-1.5">
+            <label for="name" class="text-xs font-medium text-zinc-600">Name</label>
+            <input type="text" id="name" name="name" placeholder="UK checking" required
+                   class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+        <div class="space-y-1.5">
+            <label for="currency" class="text-xs font-medium text-zinc-600">Currency</label>
+            <input type="text" id="currency" name="currency" value="EUR" maxlength="3" pattern="[A-Za-z]{3}" required
+                   class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 uppercase tracking-wider outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+            <p class="text-xs text-zinc-400">3-letter ISO code</p>
+        </div>
+        <div class="space-y-1.5">
+            <label for="type" class="text-xs font-medium text-zinc-600">Type</label>
+            <select id="type" name="type"
+                    class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="checking">Checking</option>
+                <option value="savings">Savings</option>
+                <option value="credit">Credit card</option>
+                <option value="cash">Cash</option>
+            </select>
+        </div>
+        <div class="md:col-span-4 flex justify-end">
+            <button type="submit"
+                    class="bg-[#3b5bdb] hover:bg-[#3346b5] text-white font-medium text-sm py-2.5 px-6 rounded-lg transition-colors shadow-sm">
+                Create account
+            </button>
+        </div>
+    </form>
+</section>
+{% endblock %}

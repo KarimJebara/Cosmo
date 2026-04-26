@@ -1,114 +1,61 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Import Transactions - Cosmo</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
-    <style>
-        .source-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: var(--sp-2);
-        }
-        .upload-input {
-            display: block;
-            width: 100%;
-            padding: var(--sp-3);
-            border: 1px solid var(--c-border);
-            border-radius: var(--r-md);
-            background: var(--c-surface-2);
-            color: var(--c-text);
-            font-size: 14px;
-            cursor: pointer;
-            transition: border-color 120ms ease, background 120ms ease;
-        }
-        .upload-input:hover {
-            border-color: var(--c-border-strong);
-            background: var(--c-surface);
-        }
-        .upload-input:focus {
-            outline: none;
-            border-color: var(--c-brand);
-            box-shadow: 0 0 0 3px var(--c-brand-soft);
-        }
-        .card-section-title {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--c-text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            margin: 0 0 var(--sp-3) 0;
-        }
-    </style>
-</head>
-<body>
-    <div class="navbar">
-        <div class="navbar-brand">
-            <div class="navbar-avatar">{{ session.username[0].upper() if session.username else 'U' }}</div>
-            <strong>Cosmo</strong>
-        </div>
-        <div class="navbar-nav">
-            <a href="{{ url_for('dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('accounts') }}">Accounts</a>
-            <a href="{{ url_for('income') }}">Income</a>
-            <a href="{{ url_for('expenses') }}">Expenses</a>
-            <a href="{{ url_for('budgets') }}">Budgets</a>
-            <a href="{{ url_for('reports') }}">Reports</a>
-            <a href="{{ url_for('graphs_stats') }}">Analytics</a>
-            <a href="{{ url_for('rules') }}">Rules</a>
-            <a href="{{ url_for('revolut_import') }}" class="active">Import</a>
-            <a href="{{ url_for('logout') }}" class="navbar-logout">Logout</a>
-        </div>
-    </div>
+{% extends "_layout.html" %}
+{% set active_page = 'revolut_import' %}
+{% block title %}Import | Cosmo{% endblock %}
+{% block header_title %}Import{% endblock %}
+{% block header_subtitle %}
+<span class="hidden md:inline-block text-sm text-zinc-500 border-l border-zinc-200 pl-4">
+    Bring transactions in from a CSV
+</span>
+{% endblock %}
 
-    <div class="container container-lg">
-        <div class="page-header">
-            <div>
-                <h1>Import Transactions</h1>
-                <p class="muted">Upload a CSV from your bank. Cosmo creates the matching accounts, applies your category rules, and skips duplicates.</p>
-            </div>
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 items-start">
+    <section class="bg-white rounded-[14px] border border-zinc-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-zinc-200">
+            <h3 class="font-display font-semibold text-zinc-900">Upload a CSV file</h3>
+            <p class="text-xs text-zinc-500 mt-0.5">Cosmo creates the matching accounts, applies your category rules, and skips duplicates.</p>
         </div>
-
-        {% with messages = get_flashed_messages() %}
-          {% if messages %}
-            <div class="flash-messages">
-                {% for message in messages %}
-                    <div class="alert alert-success">{{ message }}</div>
-                {% endfor %}
-            </div>
-          {% endif %}
-        {% endwith %}
-
-        <div class="card">
-            <div class="card-body">
-                <p class="card-section-title">Supported sources</p>
-                <div class="source-list">
-                    <span class="badge badge-neutral">Revolut</span>
-                    <span class="badge badge-neutral">Wise</span>
-                    <span class="badge badge-neutral">N26</span>
-                    <span class="badge badge-neutral">Generic CSV</span>
+        <form action="{{ url_for('revolut_import') }}" method="post" enctype="multipart/form-data" class="p-6 space-y-5">
+            <label for="revolut_csv"
+                   class="block border-2 border-dashed border-zinc-200 hover:border-indigo-300 rounded-xl p-10 text-center cursor-pointer transition-colors bg-zinc-50/30 hover:bg-zinc-50">
+                <div class="w-12 h-12 mx-auto rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3">
+                    <span class="material-symbols-outlined text-[24px]">cloud_upload</span>
                 </div>
-            </div>
-        </div>
+                <div class="text-sm font-medium text-zinc-900">Click to choose a CSV file</div>
+                <div class="text-xs text-zinc-500 mt-1">Maximum 10 megabytes. CSV only.</div>
+                <input class="hidden" type="file" id="revolut_csv" name="revolut_csv" accept=".csv,.xlsx" required onchange="document.getElementById('selected-file').textContent = this.files[0]?.name || ''">
+            </label>
+            <div id="selected-file" class="text-xs text-zinc-500 tabular-nums"></div>
 
-        <div class="card" style="margin-top: var(--sp-4);">
-            <div class="card-header">
-                <h2 class="card-title">Upload a file</h2>
+            <div class="flex justify-end">
+                <button type="submit"
+                        class="inline-flex items-center gap-2 bg-[#3b5bdb] hover:bg-[#3346b5] text-white font-medium text-sm px-6 py-2.5 rounded-lg transition-colors shadow-sm">
+                    <span class="material-symbols-outlined text-[18px]">upload</span>
+                    Upload and import
+                </button>
             </div>
-            <div class="card-body">
-                <form action="{{ url_for('revolut_import') }}" method="post" enctype="multipart/form-data">
-                    <div class="field">
-                        <label for="revolut_csv">CSV file</label>
-                        <input class="upload-input" type="file" id="revolut_csv" name="revolut_csv" accept=".csv,.xlsx" required>
-                        <p class="help">Maximum 10 megabytes per file. CSV only.</p>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Upload and import</button>
-                </form>
-            </div>
-        </div>
+        </form>
+    </section>
 
-        <a class="back-link" href="{{ url_for('dashboard') }}">Back to Dashboard</a>
-    </div>
-</body>
-</html>
+    <section class="bg-white rounded-[14px] border border-zinc-200 shadow-sm p-5">
+        <h3 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Supported sources</h3>
+        <div class="space-y-2">
+            {% for src in ['Revolut', 'Wise', 'N26', 'Generic CSV'] %}
+            <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-zinc-50">
+                <span class="material-symbols-outlined text-zinc-400 text-[18px]">check_circle</span>
+                <span class="text-sm font-medium text-zinc-700">{{ src }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="mt-5 pt-5 border-t border-zinc-100">
+            <h3 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">How it works</h3>
+            <ol class="space-y-2 text-xs text-zinc-600">
+                <li class="flex gap-2"><span class="text-[#3b5bdb] font-bold">1.</span><span>Upload a CSV from your bank.</span></li>
+                <li class="flex gap-2"><span class="text-[#3b5bdb] font-bold">2.</span><span>Cosmo detects the format and creates accounts per currency.</span></li>
+                <li class="flex gap-2"><span class="text-[#3b5bdb] font-bold">3.</span><span>Categories are applied from your existing rules.</span></li>
+                <li class="flex gap-2"><span class="text-[#3b5bdb] font-bold">4.</span><span>Duplicate transactions are skipped.</span></li>
+            </ol>
+        </div>
+    </section>
+</div>
+{% endblock %}

@@ -1,147 +1,163 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Income | Cosmo</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='income.css') }}">
-</head>
-<body>
-    <nav class="navbar">
-        <div class="navbar-brand">
-            <div class="navbar-avatar">{{ session.username[0].upper() if session.username else 'U' }}</div>
-            <strong>Cosmo</strong>
-        </div>
-        <div class="navbar-nav">
-            <a href="{{ url_for('dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('accounts') }}">Accounts</a>
-            <a href="{{ url_for('income') }}" class="active">Income</a>
-            <a href="{{ url_for('expenses') }}">Expenses</a>
-            <a href="{{ url_for('budgets') }}">Budgets</a>
-            <a href="{{ url_for('reports') }}">Reports</a>
-            <a href="{{ url_for('graphs_stats') }}">Analytics</a>
-            <a href="{{ url_for('rules') }}">Rules</a>
-            <a href="{{ url_for('revolut_import') }}">Import</a>
-            <a href="{{ url_for('logout') }}" class="navbar-logout">Logout</a>
-        </div>
-    </nav>
+{% extends "_layout.html" %}
+{% set active_page = 'income' %}
+{% block title %}Income | Cosmo{% endblock %}
+{% block header_title %}Income{% endblock %}
+{% block header_subtitle %}
+<span class="hidden md:inline-block text-sm text-zinc-500 border-l border-zinc-200 pl-4">
+    Salary, freelance, refunds, returns
+</span>
+{% endblock %}
+{% block header_actions %}
+<select id="timeframe" onchange="changeTimeframe(this.value)"
+        class="text-sm font-medium text-zinc-700 bg-white border border-zinc-200 rounded-md px-3 py-1.5 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
+    <option value="1"  {% if timeframe_months == 1  %}selected{% endif %}>Last 30 days</option>
+    <option value="3"  {% if timeframe_months == 3  %}selected{% endif %}>Last 3 months</option>
+    <option value="6"  {% if timeframe_months == 6  %}selected{% endif %}>Last 6 months</option>
+    <option value="12" {% if timeframe_months == 12 %}selected{% endif %}>Last 12 months</option>
+</select>
+<div class="flex items-center gap-2 border-l border-zinc-200 pl-6">
+    <span class="text-xs font-medium text-zinc-500 uppercase tracking-wider">Total</span>
+    <span class="text-sm font-semibold text-emerald-600 tabular-nums">+{{ total_income|default(0)|money }} EUR</span>
+</div>
+<script>
+    function changeTimeframe(months) {
+        fetch('/set_timeframe/' + months, { method: 'POST' }).then(() => window.location.href = window.location.pathname);
+    }
+</script>
+{% endblock %}
 
-    <div class="container container-lg">
-        <div class="page-header">
-            <div>
-                <h1>Income</h1>
-                <p class="muted">Record income entries and review recent activity.</p>
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)] gap-5 items-start">
+    <section class="bg-white rounded-[14px] border border-zinc-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-zinc-200">
+            <h3 class="font-display font-semibold text-zinc-900">Add income</h3>
+        </div>
+        <form method="post" class="p-5 flex flex-col gap-4">
+            <div class="space-y-1.5">
+                <label for="date" class="text-xs font-medium text-zinc-600">Date</label>
+                <input type="date" id="date" name="date" value="{{ today }}" required
+                       class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 tabular-nums">
+            </div>
+            <div class="space-y-1.5">
+                <label for="category" class="text-xs font-medium text-zinc-600">Category</label>
+                <select id="category" name="category" required
+                        class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="Salary">Salary</option>
+                    <option value="Freelance">Freelance</option>
+                    <option value="Business">Business</option>
+                    <option value="Investment Returns">Investment returns</option>
+                    <option value="Rental Income">Rental income</option>
+                    <option value="Side Hustle">Side hustle</option>
+                    <option value="Gift/Bonus">Gift or bonus</option>
+                    <option value="Refund">Refund</option>
+                    <option value="Interest">Interest</option>
+                    <option value="Other" selected>Other</option>
+                </select>
+            </div>
+            <div class="space-y-1.5">
+                <label for="description" class="text-xs font-medium text-zinc-600">Description</label>
+                <input type="text" id="description" name="description" placeholder="Source or note" required
+                       class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 placeholder-zinc-400">
+            </div>
+            <div class="flex gap-3">
+                <div class="flex-1 space-y-1.5">
+                    <label for="amount" class="text-xs font-medium text-zinc-600">Amount</label>
+                    <input type="number" id="amount" name="amount" placeholder="0.00" step="0.01" min="0.01" required
+                           class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 tabular-nums text-right">
+                </div>
+                <div class="w-[100px] space-y-1.5">
+                    <label for="currency" class="text-xs font-medium text-zinc-600">Currency</label>
+                    <select id="currency" name="currency"
+                            class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="EUR">EUR</option>
+                        <option value="GBP">GBP</option>
+                        <option value="USD">USD</option>
+                        <option value="JPY">JPY</option>
+                        <option value="CHF">CHF</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit"
+                    class="mt-2 w-full bg-[#3b5bdb] hover:bg-[#3346b5] text-white font-medium text-sm py-2.5 rounded-lg transition-colors shadow-sm">
+                Add income
+            </button>
+        </form>
+    </section>
+
+    <section class="bg-white rounded-[14px] border border-zinc-200 shadow-sm overflow-hidden flex flex-col min-w-0">
+        <div class="px-5 py-4 border-b border-zinc-200 flex items-center justify-between">
+            <h3 class="font-display font-semibold text-zinc-900">Recent income</h3>
+            <span class="text-xs text-zinc-500 tabular-nums">
+                {% if total_count %}
+                    Showing {{ ((page - 1) * per_page + 1) }}–{{ ((page - 1) * per_page + incomes|length) }} of {{ total_count }}
+                {% endif %}
+            </span>
+        </div>
+        {% if incomes %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-zinc-50/50 text-[12px] uppercase text-zinc-500 tracking-wider font-medium border-b border-zinc-200">
+                    <tr>
+                        <th class="py-3 px-5 font-medium">Date</th>
+                        <th class="py-3 px-5 font-medium">Category</th>
+                        <th class="py-3 px-5 font-medium">Description</th>
+                        <th class="py-3 px-5 font-medium text-right">Amount</th>
+                        <th class="py-3 px-5 w-10"></th>
+                    </tr>
+                </thead>
+                <tbody class="text-zinc-700 divide-y divide-zinc-100">
+                    {% for income in incomes %}
+                    <tr class="group hover:bg-zinc-50 transition-colors">
+                        <td class="py-3 px-5 tabular-nums text-zinc-500">{{ income.date }}</td>
+                        <td class="py-3 px-5">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-zinc-100 text-zinc-600">{{ income.category }}</span>
+                        </td>
+                        <td class="py-3 px-5 font-medium text-zinc-900">{{ income.description if income.description else '' }}</td>
+                        <td class="py-3 px-5 text-right tabular-nums font-medium text-emerald-600">
+                            +{{ income.amount|format_with_conversion(income.currency) }}
+                        </td>
+                        <td class="py-3 px-5 text-right">
+                            <form method="post" action="{{ url_for('delete_income', date_str=income.date, amount=income.amount, desc=income.description) }}" class="m-0">
+                                <button type="submit" class="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-rose-500 transition-all"
+                                        onclick="return confirm('Delete this entry?')">
+                                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-8 text-center text-sm text-zinc-500">
+            No income in this timeframe.
+        </div>
+        {% endif %}
+        {% if total_pages and total_pages > 1 %}
+        <div class="px-5 py-3 border-t border-zinc-200 flex items-center justify-between bg-zinc-50/50">
+            <span class="text-xs text-zinc-500 tabular-nums">Page {{ page }} of {{ total_pages }}</span>
+            <div class="flex gap-2">
+                {% if page > 1 %}
+                    <a href="?page={{ page - 1 }}" class="px-3 py-1.5 rounded-lg text-sm font-medium text-zinc-700 hover:bg-zinc-100 transition-colors">Previous</a>
+                {% else %}
+                    <span class="px-3 py-1.5 rounded-lg text-sm font-medium text-zinc-300">Previous</span>
+                {% endif %}
+                {% if page < total_pages %}
+                    <a href="?page={{ page + 1 }}" class="px-3 py-1.5 rounded-lg text-sm font-medium text-zinc-700 hover:bg-zinc-100 transition-colors">Next</a>
+                {% else %}
+                    <span class="px-3 py-1.5 rounded-lg text-sm font-medium text-zinc-300">Next</span>
+                {% endif %}
             </div>
         </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
 
-        {% with messages = get_flashed_messages() %}
-          {% if messages %}
-            <div class="flash-messages">
-            {% for message in messages %}
-              <div class="alert alert-success">{{ message }}</div>
-            {% endfor %}
-            </div>
-          {% endif %}
-        {% endwith %}
-
-        <div class="entry-grid">
-            <section class="card entry-form-card">
-                <div class="card-header">
-                    <h3 class="card-title">Add income</h3>
-                </div>
-                <div class="card-body">
-                    <form method="post">
-                        <div class="field">
-                            <label for="date">Date</label>
-                            <input type="date" id="date" name="date" required>
-                        </div>
-                        <div class="field">
-                            <label for="category">Category</label>
-                            <select id="category" name="category" required>
-                                <option value="Salary">Salary</option>
-                                <option value="Freelance">Freelance</option>
-                                <option value="Business">Business</option>
-                                <option value="Investment Returns">Investment returns</option>
-                                <option value="Rental Income">Rental income</option>
-                                <option value="Side Hustle">Side hustle</option>
-                                <option value="Gift/Bonus">Gift or bonus</option>
-                                <option value="Refund">Refund</option>
-                                <option value="Interest">Interest</option>
-                                <option value="Other" selected>Other</option>
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label for="description">Description</label>
-                            <input type="text" id="description" name="description" placeholder="Source or note" required>
-                            <p class="help">Optional context shown alongside the entry.</p>
-                        </div>
-                        <div class="entry-amount-row">
-                            <div class="field">
-                                <label for="amount">Amount</label>
-                                <input type="number" id="amount" name="amount" placeholder="0.00" step="0.01" min="0.01" required>
-                            </div>
-                            <div class="field">
-                                <label for="currency">Currency</label>
-                                <select id="currency" name="currency">
-                                    <option value="EUR">EUR</option>
-                                    <option value="GBP">GBP</option>
-                                    <option value="USD">USD</option>
-                                </select>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-full">Add income</button>
-                    </form>
-                </div>
-            </section>
-
-            <section class="card entry-list-card">
-                <div class="card-header">
-                    <h3 class="card-title">Recent income</h3>
-                    <span class="muted entry-total">Total {{ "%.2f"|format(total_income|default(0)) }} EUR</span>
-                </div>
-                <div class="card-body">
-                    {% if incomes %}
-                        <div class="table-wrap">
-                            <table class="table entry-table">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Category</th>
-                                        <th>Description</th>
-                                        <th class="num">Amount</th>
-                                        <th class="actions-col">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                {% for income in incomes %}
-                                    <tr>
-                                        <td>{{ income.date }}</td>
-                                        <td><span class="badge badge-neutral">{{ income.category }}</span></td>
-                                        <td>{{ income.description if income.description else '' }}</td>
-                                        <td class="num positive">{{ income.amount|format_with_conversion(income.currency) }}</td>
-                                        <td class="actions-col">
-                                            <form method="post" action="{{ url_for('delete_income', date_str=income.date, amount=income.amount, desc=income.description) }}" class="inline-form">
-                                                <button type="submit" class="btn btn-ghost btn-sm" onclick="return confirm('Delete this entry?')">Delete</button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <p class="muted">No income entries yet. Use the form to add the first one.</p>
-                    {% endif %}
-                </div>
-            </section>
-        </div>
-
-        <a class="back-link" href="{{ url_for('dashboard') }}">Back to dashboard</a>
-    </div>
-
-    <script>
-        document.getElementById('date').valueAsDate = new Date();
-    </script>
-</body>
-</html>
+{% block extra_scripts %}
+<script>
+    const dateInput = document.getElementById('date');
+    if (dateInput) dateInput.valueAsDate = new Date();
+</script>
+{% endblock %}

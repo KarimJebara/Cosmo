@@ -1,252 +1,206 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <title>Reports. Cosmo</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='reports.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-
-<body>
-    <!-- Navbar -->
-    <div class="navbar">
-        <div class="navbar-brand">
-            <div class="navbar-avatar">{{ session.username[0].upper() if session.username else 'U' }}</div>
-            <strong>Cosmo</strong>
-        </div>
-        <div class="navbar-timeframe">
-            <label for="timeframe" class="navbar-control-label">Timeframe</label>
-            <select id="timeframe" class="navbar-select" onchange="changeTimeframe(this.value)">
-                <option value="1" {% if timeframe_months == 1 %}selected{% endif %}>1 Month</option>
-                <option value="2" {% if timeframe_months == 2 %}selected{% endif %}>2 Months</option>
-                <option value="3" {% if timeframe_months == 3 %}selected{% endif %}>3 Months</option>
-                <option value="6" {% if timeframe_months == 6 %}selected{% endif %}>6 Months</option>
-                <option value="9" {% if timeframe_months == 9 %}selected{% endif %}>9 Months</option>
-                <option value="12" {% if timeframe_months == 12 %}selected{% endif %}>12 Months</option>
-            </select>
-        </div>
-        <div class="navbar-nav">
-            <a href="{{ url_for('dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('accounts') }}">Accounts</a>
-            <a href="{{ url_for('income') }}">Income</a>
-            <a href="{{ url_for('expenses') }}">Expenses</a>
-            <a href="{{ url_for('budgets') }}">Budgets</a>
-            <a href="{{ url_for('reports') }}" class="active">Reports</a>
-            <a href="{{ url_for('graphs_stats') }}">Analytics</a>
-            <a href="{{ url_for('rules') }}">Rules</a>
-            <a href="{{ url_for('revolut_import') }}">Import</a>
-            <a href="{{ url_for('logout') }}" class="navbar-logout">Logout</a>
-        </div>
-    </div>
-
-    <script>
+{% extends "_layout.html" %}
+{% set active_page = 'reports' %}
+{% block title %}Reports | Cosmo{% endblock %}
+{% block header_title %}Reports{% endblock %}
+{% block header_subtitle %}
+<span class="hidden md:inline-block text-sm text-zinc-500 border-l border-zinc-200 pl-4">
+    Income, expenses, and trends across your timeframe
+</span>
+{% endblock %}
+{% block header_actions %}
+<select id="timeframe" onchange="changeTimeframe(this.value)"
+        class="text-sm font-medium text-zinc-700 bg-white border border-zinc-200 rounded-md px-3 py-1.5 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
+    <option value="1"  {% if timeframe_months == 1  %}selected{% endif %}>Last 30 days</option>
+    <option value="3"  {% if timeframe_months == 3  %}selected{% endif %}>Last 3 months</option>
+    <option value="6"  {% if timeframe_months == 6  %}selected{% endif %}>Last 6 months</option>
+    <option value="12" {% if timeframe_months == 12 %}selected{% endif %}>Last 12 months</option>
+</select>
+<script>
     function changeTimeframe(months) {
-        fetch('/set_timeframe/' + months, { method: 'POST' })
-            .then(() => window.location.reload());
+        fetch('/set_timeframe/' + months, { method: 'POST' }).then(() => window.location.reload());
     }
-    </script>
+</script>
+{% endblock %}
 
-    <div class="container container-lg">
-        <!-- Page Header -->
-        <div class="page-header">
-            <div>
-                <h1>Financial reports</h1>
-                <p class="muted">A summary of income, expenses, and trends across your selected timeframe.</p>
-            </div>
-        </div>
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+{% endblock %}
 
-        <!-- Overview Stats -->
-        <div class="reports-kpi">
-            <div class="card kpi-card">
-                <span class="card-title">Total income</span>
-                <span class="card-value">€{{ "%.2f"|format(total_income) }}</span>
-            </div>
-            <div class="card kpi-card">
-                <span class="card-title">Total expenses</span>
-                <span class="card-value">€{{ "%.2f"|format(total_expenses) }}</span>
-            </div>
-            <div class="card kpi-card">
-                <span class="card-title">Net balance</span>
-                <span class="card-value">€{{ "%.2f"|format(balance) }}</span>
-            </div>
-        </div>
-
-        <!-- Spending breakdown -->
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title-h">Spending breakdown</h3>
-            </div>
-            <div class="card-body">
-                {% if expense_by_category %}
-                <div class="breakdown-grid">
-                    <div class="chart-frame">
-                        <canvas id="categoryChart"></canvas>
-                    </div>
-                    <div class="legend-list">
-                        {% for cat in expense_by_category %}
-                        <div class="legend-row">
-                            <span class="legend-dot" data-color-index="{{ loop.index0 % 6 }}"></span>
-                            <span class="legend-label">{{ cat.category }}</span>
-                            <span class="legend-value">€{{ "%.2f"|format(cat.amount) }}</span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% else %}
-                <p class="muted">No expense data available yet.</p>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Monthly trend -->
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title-h">Monthly trend</h3>
-            </div>
-            <div class="card-body">
-                {% if monthly_data %}
-                <div class="chart-frame chart-frame-tall">
-                    <canvas id="trendChart"></canvas>
-                </div>
-                {% else %}
-                <p class="muted">Not enough data for trend analysis yet.</p>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Transaction history -->
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title-h">Transaction history</h3>
-            </div>
-            <div class="card-body">
-                {% if recent_transactions %}
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Description</th>
-                            <th>Category</th>
-                            <th>Type</th>
-                            <th class="text-right">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for trans in recent_transactions %}
-                        <tr>
-                            <td>{{ trans.date }}</td>
-                            <td>{{ trans.description if trans.description else '.' }}</td>
-                            <td><span class="badge badge-neutral">{{ trans.category }}</span></td>
-                            <td>
-                                {% if trans.type|lower == 'income' %}
-                                <span class="badge badge-success">Income</span>
-                                {% else %}
-                                <span class="badge badge-danger">Expense</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-right">
-                                {% if trans.type|lower == 'income' %}+{% else %}-{% endif %}€{{ "%.2f"|format(trans.amount) }}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}
-                <p class="muted">No transactions recorded yet.</p>
-                {% endif %}
-            </div>
-        </div>
-
-        <a class="back-link" href="{{ url_for('dashboard') }}">Back to dashboard</a>
+{% block content %}
+<section class="grid grid-cols-1 md:grid-cols-3 gap-5">
+    <div class="bg-white rounded-[14px] border border-zinc-200 p-5 shadow-sm">
+        <div class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Total income</div>
+        <div class="text-2xl font-bold text-emerald-600 mt-1 tabular-nums font-display">+{{ total_income|money }} EUR</div>
     </div>
+    <div class="bg-white rounded-[14px] border border-zinc-200 p-5 shadow-sm">
+        <div class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Total expenses</div>
+        <div class="text-2xl font-bold text-rose-600 mt-1 tabular-nums font-display">-{{ total_expenses|money }} EUR</div>
+    </div>
+    <div class="bg-white rounded-[14px] border border-zinc-200 p-5 shadow-sm">
+        <div class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Net balance</div>
+        <div class="text-2xl font-bold mt-1 tabular-nums font-display {% if balance >= 0 %}text-zinc-900{% else %}text-rose-600{% endif %}">
+            {{ balance|money }} EUR
+        </div>
+    </div>
+</section>
 
-    <script>
-        const palette = ['#3b5bdb', '#14b8a6', '#f59e0b', '#10b981', '#6366f1', '#71717a', '#d97706', '#475569', '#0ea5e9', '#a16207'];
-
-        // Apply legend dot colors via JS so HTML stays clean.
-        document.querySelectorAll('.legend-dot').forEach(function (el) {
-            const idx = parseInt(el.dataset.colorIndex, 10) || 0;
-            el.style.background = palette[idx % palette.length];
-        });
-
+<section class="bg-white rounded-[14px] border border-zinc-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-zinc-200">
+        <h3 class="font-display font-semibold text-zinc-900">Spending breakdown</h3>
+    </div>
+    <div class="p-6">
         {% if expense_by_category %}
-        const categoryCtx = document.getElementById('categoryChart').getContext('2d');
-        new Chart(categoryCtx, {
-            type: 'doughnut',
-            data: {
-                labels: {{ category_labels|tojson }},
-                datasets: [{
-                    data: {{ category_values|tojson }},
-                    backgroundColor: palette,
-                    borderColor: '#ffffff',
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                }
-            }
-        });
+        <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-center">
+            <div class="h-[280px] relative">
+                <canvas id="categoryChart"></canvas>
+            </div>
+            <div class="space-y-2">
+                {% for cat in expense_by_category %}
+                <div class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-zinc-50 transition-colors">
+                    <span class="legend-dot w-2.5 h-2.5 rounded-full shrink-0" data-color-index="{{ loop.index0 % 10 }}"></span>
+                    <span class="flex-1 text-sm font-medium text-zinc-700">{{ cat.category }}</span>
+                    <span class="text-sm font-medium tabular-nums text-zinc-900">{{ cat.amount|money }} EUR</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <p class="text-sm text-zinc-500">No expense data available yet.</p>
         {% endif %}
+    </div>
+</section>
 
+<section class="bg-white rounded-[14px] border border-zinc-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-zinc-200">
+        <h3 class="font-display font-semibold text-zinc-900">Monthly trend</h3>
+    </div>
+    <div class="p-6">
         {% if monthly_data %}
-        const trendCtx = document.getElementById('trendChart').getContext('2d');
-        new Chart(trendCtx, {
-            type: 'line',
-            data: {
-                labels: {{ month_labels|tojson }},
-                datasets: [
-                    {
-                        label: 'Income',
-                        data: {{ income_trend|tojson }},
-                        borderColor: '#059669',
-                        backgroundColor: 'rgba(5, 150, 105, 0.08)',
-                        tension: 0.35,
-                        fill: true,
-                        pointRadius: 3,
-                        pointBackgroundColor: '#059669',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 1.5,
-                        borderWidth: 2
-                    },
-                    {
-                        label: 'Expenses',
-                        data: {{ expense_trend|tojson }},
-                        borderColor: '#dc2626',
-                        backgroundColor: 'rgba(220, 38, 38, 0.08)',
-                        tension: 0.35,
-                        fill: true,
-                        pointRadius: 3,
-                        pointBackgroundColor: '#dc2626',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 1.5,
-                        borderWidth: 2
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { usePointStyle: true, padding: 15, font: { size: 12 } }
-                    }
-                },
-                scales: {
-                    y: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
-                    x: { grid: { display: false } }
-                }
-            }
-        });
+        <div class="h-[300px] relative">
+            <canvas id="trendChart"></canvas>
+        </div>
+        {% else %}
+        <p class="text-sm text-zinc-500">Not enough data for trend analysis yet.</p>
         {% endif %}
-    </script>
-</body>
+    </div>
+</section>
 
-</html>
+<section class="bg-white rounded-[14px] border border-zinc-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-zinc-200">
+        <h3 class="font-display font-semibold text-zinc-900">Transaction history</h3>
+    </div>
+    {% if recent_transactions %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm whitespace-nowrap">
+            <thead class="bg-zinc-50/50 text-[12px] uppercase text-zinc-500 tracking-wider font-medium border-b border-zinc-200">
+                <tr>
+                    <th class="py-3 px-5 font-medium">Date</th>
+                    <th class="py-3 px-5 font-medium">Description</th>
+                    <th class="py-3 px-5 font-medium">Category</th>
+                    <th class="py-3 px-5 font-medium">Type</th>
+                    <th class="py-3 px-5 font-medium text-right">Amount</th>
+                </tr>
+            </thead>
+            <tbody class="text-zinc-700 divide-y divide-zinc-100">
+                {% for trans in recent_transactions %}
+                <tr class="hover:bg-zinc-50 transition-colors">
+                    <td class="py-3 px-5 tabular-nums text-zinc-500">{{ trans.date }}</td>
+                    <td class="py-3 px-5 font-medium text-zinc-900">{{ trans.description if trans.description else '.' }}</td>
+                    <td class="py-3 px-5">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-zinc-100 text-zinc-600">{{ trans.category }}</span>
+                    </td>
+                    <td class="py-3 px-5">
+                        {% if trans.type|lower == 'income' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700">Income</span>
+                        {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-50 text-rose-700">Expense</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-3 px-5 text-right tabular-nums font-medium {% if trans.type|lower == 'income' %}text-emerald-600{% else %}text-zinc-900{% endif %}">
+                        {% if trans.type|lower == 'income' %}+{% else %}-{% endif %}{{ trans.amount|money }} EUR
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="p-8 text-center text-sm text-zinc-500">No transactions recorded yet.</div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const palette = ['#3b5bdb', '#6366f1', '#a5b4fc', '#14b8a6', '#f59e0b', '#10b981', '#71717a', '#d97706', '#475569', '#0ea5e9'];
+
+    document.querySelectorAll('.legend-dot').forEach(function (el) {
+        const idx = parseInt(el.dataset.colorIndex, 10) || 0;
+        el.style.background = palette[idx % palette.length];
+    });
+
+    {% if expense_by_category %}
+    new Chart(document.getElementById('categoryChart').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: {{ category_labels|tojson }},
+            datasets: [{
+                data: {{ category_values|tojson }},
+                backgroundColor: palette,
+                borderColor: '#ffffff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: '62%',
+            plugins: { legend: { display: false } }
+        }
+    });
+    {% endif %}
+
+    {% if monthly_data %}
+    new Chart(document.getElementById('trendChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: {{ month_labels|tojson }},
+            datasets: [
+                {
+                    label: 'Income',
+                    data: {{ income_trend|tojson }},
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                    tension: 0.35,
+                    fill: true,
+                    pointRadius: 3,
+                    pointBackgroundColor: '#10b981',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 1.5,
+                    borderWidth: 2
+                },
+                {
+                    label: 'Expenses',
+                    data: {{ expense_trend|tojson }},
+                    borderColor: '#f43f5e',
+                    backgroundColor: 'rgba(244, 63, 94, 0.08)',
+                    tension: 0.35,
+                    fill: true,
+                    pointRadius: 3,
+                    pointBackgroundColor: '#f43f5e',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 1.5,
+                    borderWidth: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, animation: false,
+            plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 15, font: { size: 12 } } } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}
