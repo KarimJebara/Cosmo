@@ -11,13 +11,29 @@ import hashlib
 import logging
 import os
 import sqlite3
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
-DATABASE_PATH = 'data/budget_tracker.db'
+
+def _resolve_database_path() -> str:
+    """Pull the SQLite path out of DATABASE_URL if set; default to the legacy location.
+
+    Lets self-hosters point at a mounted volume (sqlite:////data/...) without
+    forking the file. Non-sqlite URLs aren't supported by this raw layer —
+    those callers go through cosmo/db.py.
+    """
+    url = os.environ.get("DATABASE_URL", "").strip()
+    if url.startswith("sqlite:////"):
+        return "/" + url[len("sqlite:////") :]
+    if url.startswith("sqlite:///"):
+        return url[len("sqlite:///") :]
+    return "data/budget_tracker.db"
+
+
+DATABASE_PATH = _resolve_database_path()
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +49,8 @@ def _is_legacy_sha256(password_hash: str) -> bool:
 
 
 def ensure_data_directory_exists():
-    os.makedirs('data', exist_ok=True)
+    parent = os.path.dirname(DATABASE_PATH) or "."
+    os.makedirs(parent, exist_ok=True)
 
 
 @contextmanager
@@ -62,8 +79,11 @@ def init_db():
     ensure_data_directory_exists()
 
     repo_root = Path(__file__).resolve().parent
-    db_url = f"sqlite:///{repo_root / DATABASE_PATH}"
-    os.environ["DATABASE_URL"] = db_url
+    if os.environ.get("DATABASE_URL"):
+        db_url = os.environ["DATABASE_URL"]
+    else:
+        db_url = f"sqlite:///{repo_root / DATABASE_PATH}"
+        os.environ["DATABASE_URL"] = db_url
 
     try:
         from alembic import command
@@ -192,20 +212,16 @@ def drop_all_users_and_data():
 
     try:
         for table in table_order:
-            try:
+            # Table may not exist (fresh db before alembic, or already dropped).
+            with suppress(sqlite3.OperationalError):
                 cursor.execute(f'DELETE FROM {table}')
-            except sqlite3.OperationalError:
-                # Table may not exist (fresh db before alembic, or already dropped)
-                pass
-        try:
+        with suppress(sqlite3.OperationalError):
             cursor.execute(
                 "DELETE FROM sqlite_sequence WHERE name IN "
                 "('users_v2','accounts','categories','transactions','budgets_v2',"
                 "'merchant_rules','fx_rates','import_sources',"
                 "'users','expenses','incomes','budgets')"
             )
-        except sqlite3.OperationalError:
-            pass
         conn.commit()
         logger.info("All v1 + legacy tables cleared")
     except sqlite3.Error as e:

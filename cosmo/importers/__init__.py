@@ -25,13 +25,13 @@ def get_importer(kind: str) -> BaseImporter:
 
 
 __all__ = [
+    "IMPORTERS",
     "BaseImporter",
-    "ImportRecord",
-    "RevolutImporter",
-    "WiseImporter",
-    "N26Importer",
     "GenericCsvImporter",
     "GenericMapping",
-    "IMPORTERS",
+    "ImportRecord",
+    "N26Importer",
+    "RevolutImporter",
+    "WiseImporter",
     "get_importer",
 ]

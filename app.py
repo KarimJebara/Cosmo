@@ -1,7 +1,6 @@
 import logging
 import os
 import secrets
-import statistics
 from collections import defaultdict
 from datetime import datetime, timedelta
 from functools import wraps
@@ -11,7 +10,7 @@ from flask import Flask, flash, redirect, render_template, request, session, url
 import database
 from cosmo import legacy_adapter
 from cosmo.importers import get_importer
-from currency_converter import convert_to_eur, format_amount_with_conversion
+from currency_converter import format_amount_with_conversion
 from merchant_mapper import (
     ensure_merchant_files_exist,
     update_merchant_category,
@@ -51,20 +50,20 @@ def linear_regression(x_values, y_values):
     """Simple linear regression using least squares method"""
     if len(x_values) < 2 or len(y_values) < 2:
         return None, None
-    
+
     n = len(x_values)
     mean_x = sum(x_values) / n
     mean_y = sum(y_values) / n
-    
+
     numerator = sum((x_values[i] - mean_x) * (y_values[i] - mean_y) for i in range(n))
     denominator = sum((x_values[i] - mean_x) ** 2 for i in range(n))
-    
+
     if denominator == 0:
         return None, None
-    
+
     slope = numerator / denominator
     intercept = mean_y - slope * mean_x
-    
+
     return slope, intercept
 
 def login_required(f):
@@ -90,16 +89,30 @@ def index():
     return redirect(url_for('login'))
 
 
+@app.route('/healthz')
+def healthz():
+    """Liveness probe for Docker / orchestrators.
+
+    Returns 200 if the DB is reachable, 503 otherwise.
+    """
+    try:
+        with database.get_db() as conn:
+            conn.execute("SELECT 1").fetchone()
+        return {"status": "ok"}, 200
+    except Exception as exc:  # pragma: no cover - defensive
+        return {"status": "error", "detail": str(exc)}, 503
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        
+
         if not username or not password:
             flash('Please fill in all fields!')
             return redirect(url_for('login'))
-        
+
         user_id = database.authenticate_user(username, password)
         if user_id:
             session['user_id'] = user_id
@@ -111,7 +124,7 @@ def login():
         else:
             flash('Invalid username or password!')
             return redirect(url_for('login'))
-    
+
     return render_template('login.html')
 
 
@@ -121,23 +134,23 @@ def signup():
         username = request.form.get('username')
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
-        
+
         if not username or not password or not confirm_password:
             flash('Please fill in all fields!')
             return redirect(url_for('signup'))
-        
+
         if len(username) < 3:
             flash('Username must be at least 3 characters long!')
             return redirect(url_for('signup'))
-        
+
         if len(password) < 4:
             flash('Password must be at least 4 characters long!')
             return redirect(url_for('signup'))
-        
+
         if password != confirm_password:
             flash('Passwords do not match!')
             return redirect(url_for('signup'))
-        
+
         user_id = database.create_user(username, password)
         if user_id:
             session['user_id'] = user_id
@@ -147,7 +160,7 @@ def signup():
         else:
             flash('Username already exists! Please choose a different one.')
             return redirect(url_for('signup'))
-    
+
     return render_template('signup.html')
 
 
@@ -180,7 +193,7 @@ def filter_by_timeframe(items):
     """Filter items by the selected timeframe"""
     timeframe_months = session.get('timeframe_months', 12)  # Default to 12 months
     cutoff_date = datetime.now() - timedelta(days=timeframe_months * 30)
-    
+
     filtered_items = []
     for item in items:
         date_str = getattr(item, 'date', '')
@@ -189,7 +202,7 @@ def filter_by_timeframe(items):
                 date_obj = datetime.strptime(date_str, '%Y-%m-%d')
                 if date_obj >= cutoff_date:
                     filtered_items.append(item)
-            except:
+            except Exception:
                 pass
     return filtered_items
 
@@ -206,7 +219,7 @@ def dashboard():
     try:
         # Get timeframe from session (default to 12 months)
         timeframe_months = session.get('timeframe_months', 12)
-        
+
         # Get all data and filter by timeframe
         uid = _current_user_id()
         all_incomes = legacy_adapter.get_incomes(uid)
@@ -248,7 +261,7 @@ def dashboard():
                         current_month_income += amount
                     elif month_key == last_month:
                         last_month_income += amount
-                except:
+                except Exception:
                     pass
 
         for expense in expenses:
@@ -263,7 +276,7 @@ def dashboard():
                         current_month_expenses += amount
                     elif month_key == last_month:
                         last_month_expenses += amount
-                except:
+                except Exception:
                     pass
 
         # Calculate trends
@@ -319,7 +332,7 @@ def dashboard():
             try:
                 date_obj = datetime.strptime(trans['date'], '%Y-%m-%d')
                 trans['formatted_date'] = date_obj.strftime('%B %d, %Y')
-            except:
+            except Exception:
                 trans['formatted_date'] = trans['date']
 
         # Calculate expenses by category for chart
@@ -332,7 +345,7 @@ def dashboard():
         category_labels = list(expense_by_category.keys())
         category_values = list(expense_by_category.values())
 
-    except Exception as e:
+    except Exception:
         total_income = total_expenses = balance = 0.0
         income_trend = expense_trend = None
         income_trend_direction = expense_trend_direction = 'neutral'
@@ -466,13 +479,13 @@ def revolut_import():
         if 'revolut_csv' not in request.files:
             flash('No file part', 'error')
             return redirect(request.url)
-        
+
         file = request.files['revolut_csv']
-        
+
         if file.filename == '':
             flash('No selected file', 'error')
             return redirect(request.url)
-        
+
         if file and file.filename.endswith('.csv'):
             try:
                 csv_content = file.stream.read().decode('utf-8')
@@ -495,7 +508,7 @@ def revolut_import():
         else:
             flash('Invalid file type. Please upload a CSV file.', 'error')
             return redirect(request.url)
-            
+
     timeframe_months = session.get('timeframe_months', 12)
     return render_template('revolut_import.html', timeframe_months=timeframe_months)
 
@@ -510,7 +523,7 @@ def delete_income(date_str, amount, desc):
         )
         flash('Income deleted successfully!' if deleted else 'Income not found!')
     except Exception as e:
-        flash(f'Error deleting income: {str(e)}')
+        flash(f'Error deleting income: {e!s}')
     return redirect(url_for('income'))
 
 
@@ -538,7 +551,7 @@ def change_income_category(date_str, amount, desc):
         update_merchant_category(merchant, new_category, transaction_type='income')
         flash(f'Category updated to "{new_category}" for {updated_count} transaction(s) from the same merchant!')
     except Exception as e:
-        flash(f'Error updating category: {str(e)}')
+        flash(f'Error updating category: {e!s}')
     return redirect(url_for('income'))
 
 
@@ -552,7 +565,7 @@ def delete_expense(date_str, amount, desc):
         )
         flash('Expense deleted successfully!' if deleted else 'Expense not found!')
     except Exception as e:
-        flash(f'Error deleting expense: {str(e)}')
+        flash(f'Error deleting expense: {e!s}')
     return redirect(url_for('expenses'))
 
 
@@ -578,7 +591,7 @@ def change_expense_category(date_str, amount, desc):
         update_merchant_category(merchant, new_category, transaction_type='expenses')
         flash(f'Category updated to "{new_category}" for {updated_count} transaction(s) from the same merchant!')
     except Exception as e:
-        flash(f'Error updating category: {str(e)}')
+        flash(f'Error updating category: {e!s}')
     return redirect(url_for('expenses'))
 
 
@@ -785,7 +798,7 @@ def reports():
                 if month_key not in income_by_month:
                     income_by_month[month_key] = {'date': date_obj, 'label': month_label, 'amount': 0}
                 income_by_month[month_key]['amount'] += amount
-            except:
+            except Exception:
                 pass
 
     for expense in expenses:
@@ -800,7 +813,7 @@ def reports():
                 if month_key not in expense_by_month:
                     expense_by_month[month_key] = {'date': date_obj, 'label': month_label, 'amount': 0}
                 expense_by_month[month_key]['amount'] += amount
-            except:
+            except Exception:
                 pass
 
     # Get all unique months and sort them
@@ -909,7 +922,7 @@ def graphs_stats():
         day_spending = defaultdict(float)
         day_transaction_counts = defaultdict(int)
         day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-        
+
         for expense in expenses:
             date_str = getattr(expense, 'date', '')
             if date_str:
@@ -919,7 +932,7 @@ def graphs_stats():
                     amount = float(getattr(expense, 'amount', 0))
                     day_spending[day_name] += amount
                     day_transaction_counts[day_name] += 1
-                except:
+                except Exception:
                     pass
 
         # Ensure all days are represented and calculate averages
@@ -949,7 +962,7 @@ def graphs_stats():
                     if month_key not in income_by_month:
                         income_by_month[month_key] = {'date': date_obj, 'label': month_label, 'amount': 0}
                     income_by_month[month_key]['amount'] += amount
-                except:
+                except Exception:
                     pass
 
         for expense in expenses:
@@ -964,7 +977,7 @@ def graphs_stats():
                     if month_key not in expense_by_month:
                         expense_by_month[month_key] = {'date': date_obj, 'label': month_label, 'amount': 0}
                     expense_by_month[month_key]['amount'] += amount
-                except:
+                except Exception:
                     pass
 
         all_month_keys = set(list(income_by_month.keys()) + list(expense_by_month.keys()))
@@ -1024,8 +1037,7 @@ def graphs_stats():
             expense_percentages = {cat: 0 for cat in category_labels}
 
         # ===== PREDICTIONS & FORECASTING =====
-        predictions = {}
-        
+
         # 1. Monthly expense prediction
         if len(expense_trend) >= 2:
             x_months = list(range(len(expense_trend)))
@@ -1050,39 +1062,39 @@ def graphs_stats():
         # 3. Yearly balance prediction
         if len(income_trend) >= 2 and len(expense_trend) >= 2:
             x_months = list(range(max(len(income_trend), len(expense_trend))))
-            
+
             # Pad data if needed
             income_trend_padded = income_trend + [0] * (len(x_months) - len(income_trend))
             expense_trend_padded = expense_trend + [0] * (len(x_months) - len(expense_trend))
-            
+
             income_slope, income_intercept = linear_regression(x_months, income_trend_padded)
             expense_slope, expense_intercept = linear_regression(x_months, expense_trend_padded)
-            
+
             # Predict for next 12 months
             future_months = 12
             predicted_yearly_income = 0
             predicted_yearly_expenses = 0
-            
+
             for i in range(len(expense_trend), len(expense_trend) + future_months):
                 pred_income = predict_value(income_slope, income_intercept, i)
                 pred_expense = predict_value(expense_slope, expense_intercept, i)
                 predicted_yearly_income += max(0, pred_income) if pred_income else 0
                 predicted_yearly_expenses += max(0, pred_expense) if pred_expense else 0
-            
+
             predicted_yearly_balance = balance + (predicted_yearly_income - predicted_yearly_expenses)
         else:
             predicted_yearly_balance = balance + ((avg_income - avg_expense) * 12)
 
         # 4. Category-specific predictions (next year spending)
         category_predictions = {}
-        for category in category_totals.keys():
-            cat_expenses = [float(getattr(e, 'amount', 0)) for e in expenses 
+        for category in category_totals:
+            cat_expenses = [float(getattr(e, 'amount', 0)) for e in expenses
                            if getattr(e, 'category', 'Other') == category]
             if cat_expenses:
                 avg_cat_spending = sum(cat_expenses) / len(cat_expenses)
                 yearly_prediction = avg_cat_spending * 12
                 category_predictions[category] = yearly_prediction
-        
+
         # Sort by predicted spending (descending)
         sorted_predictions = sorted(category_predictions.items(), key=lambda x: x[1], reverse=True)
         top_pred_categories = dict(sorted_predictions[:5])
@@ -1147,5 +1159,4 @@ def graphs_stats():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5002)
     app.run(debug=True, port=5002)

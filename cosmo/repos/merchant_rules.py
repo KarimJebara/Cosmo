@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Sequence
+from collections.abc import Sequence
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -68,7 +68,7 @@ class MerchantRuleRepo:
         if rule is None:
             return
         rule.hit_count = (rule.hit_count or 0) + 1
-        rule.last_used_at = datetime.now(timezone.utc)
+        rule.last_used_at = datetime.now(UTC)
         # Flush so subsequent reads in the same session (including
         # ``session.refresh(rule)``) see the new value.
         self._s.flush()

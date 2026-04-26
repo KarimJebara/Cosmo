@@ -5,7 +5,6 @@ import datetime as _dt
 import io
 import logging
 from dataclasses import dataclass
-from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -22,20 +21,23 @@ class RevolutImporter:
     # Removed __init__ and all API-related methods
 
     @staticmethod
-    def parse_csv(csv_content: str) -> List[TransactionRecord]:
-        transactions: List[TransactionRecord] = []
+    def parse_csv(csv_content: str) -> list[TransactionRecord]:
+        transactions: list[TransactionRecord] = []
         f = io.StringIO(csv_content)
         reader = csv.reader(f)
-        
-        header = next(reader) 
-        
+
+        header = next(reader)
+
         try:
             started_date_col_idx = header.index('Started Date')
             description_col_idx = header.index('Description')
             amount_col_idx = header.index('Amount')
             currency_col_idx = header.index('Currency')
         except ValueError as e:
-            raise ValueError(f"Missing expected CSV column: {e}. Required columns: 'Started Date', 'Description', 'Amount', 'Currency'")
+            raise ValueError(
+                f"Missing expected CSV column: {e}. Required columns: "
+                "'Started Date', 'Description', 'Amount', 'Currency'"
+            ) from e
 
         for row in reader:
             if not row:

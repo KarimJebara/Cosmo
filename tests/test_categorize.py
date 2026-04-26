@@ -12,9 +12,8 @@ from cosmo.categorize import (
     normalize_merchant,
     record_match_used,
 )
-from cosmo.models import Base, Category, MerchantRule, User
+from cosmo.models import Base, Category, User
 from cosmo.repos import MerchantRuleRepo
-
 
 # ---------------------------------------------------------------------------
 # normalize_merchant

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import sqlite3
-
 import database
 from cosmo import legacy_adapter
 from cosmo.fx.service import FxService, set_default_service

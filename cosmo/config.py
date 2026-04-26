@@ -24,7 +24,7 @@ class Config:
     log_level: str
 
     @classmethod
-    def from_env(cls) -> "Config":
+    def from_env(cls) -> Config:
         return cls(
             secret_key=_get("SECRET_KEY", "dev-only-do-not-use-in-prod"),
             database_url=_get("DATABASE_URL", "sqlite:///data/budget_tracker.db"),

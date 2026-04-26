@@ -25,14 +25,14 @@ def _ensure_merchant_file_exists(transaction_type='expenses'):
     This is called automatically when files are needed.
     """
     merchant_file = _get_merchant_file(transaction_type)
-    
+
     # If file already exists, nothing to do
     if os.path.exists(merchant_file):
         return
-    
+
     # Create directory if it doesn't exist
     os.makedirs(os.path.dirname(merchant_file), exist_ok=True)
-    
+
     # Create empty merchant categories file
     try:
         with open(merchant_file, 'w') as f:
@@ -46,28 +46,28 @@ def load_merchant_categories(transaction_type='expenses'):
     If file doesn't exist, it will be created automatically.
     """
     merchant_file = _get_merchant_file(transaction_type)
-    
+
     # Ensure file exists before trying to load
     _ensure_merchant_file_exists(transaction_type)
-    
+
     if not os.path.exists(merchant_file):
         return {}
-    
+
     try:
-        with open(merchant_file, 'r') as f:
+        with open(merchant_file) as f:
             data = json.load(f)
             return data if isinstance(data, dict) else {}
-    except (json.JSONDecodeError, IOError):
+    except (OSError, json.JSONDecodeError):
         # If file is corrupted, return empty dict
         return {}
 
 def save_merchant_categories(merchant_dict, transaction_type='expenses'):
     """Save merchant category mappings to JSON file"""
     merchant_file = _get_merchant_file(transaction_type)
-    
+
     # Ensure directory exists
     os.makedirs(os.path.dirname(merchant_file), exist_ok=True)
-    
+
     try:
         with open(merchant_file, 'w') as f:
             json.dump(merchant_dict, f, indent=4)
@@ -86,7 +86,7 @@ def update_merchant_category(merchant_name, category, transaction_type='expenses
     """Update or add a merchant category mapping"""
     if not merchant_name or not category:
         return
-    
+
     merchants = load_merchant_categories(transaction_type)
     merchants[merchant_name] = category
     save_merchant_categories(merchants, transaction_type)
@@ -95,7 +95,7 @@ def get_category_for_merchant(merchant_name, transaction_type='expenses'):
     """Get the category for a merchant, returns None if not found"""
     if not merchant_name:
         return None
-    
+
     merchants = load_merchant_categories(transaction_type)
     return merchants.get(merchant_name)
 

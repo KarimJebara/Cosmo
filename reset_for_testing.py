@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 
 import os
-import json
 import shutil
 import sqlite3
-from pathlib import Path
 
 import database
 
@@ -40,14 +38,14 @@ def is_database_corrupted():
     """Check if database file is corrupted"""
     if not os.path.exists(DATABASE_PATH):
         return False
-    
+
     try:
         conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
         cursor.execute("PRAGMA integrity_check")
         result = cursor.fetchone()
         conn.close()
-        
+
         is_corrupted = result[0] != 'ok'
         if is_corrupted:
             print(f"[WARNING] Database integrity check failed: {result[0]}")
@@ -75,7 +73,7 @@ def reset_database():
                     print(f"[WARNING] Could not clear data cleanly: {e}")
                     print("[WARNING] Rebuilding database instead...")
                     remove_file_if_exists(DATABASE_PATH)
-        
+
         # Initialize fresh database
         database.init_db()
         print("[OK] Database initialized")
@@ -95,11 +93,11 @@ def reset_merchant_categories():
 def reset_cache():
     try:
         cache_dirs = []
-        for root, dirs, files in os.walk('.'):
+        for root, dirs, _files in os.walk('.'):
             if '__pycache__' in dirs:
                 cache_path = os.path.join(root, '__pycache__')
                 cache_dirs.append(cache_path)
-        
+
         for cache_dir in cache_dirs:
             try:
                 shutil.rmtree(cache_dir)

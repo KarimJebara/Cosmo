@@ -1,5 +1,3 @@
-import pytest
-from database import init_db, drop_all_users_and_data
 
 def test_dashboard_displays_correct_totals(authenticated_client):
     authenticated_client.post('/income', data={
@@ -9,7 +7,7 @@ def test_dashboard_displays_correct_totals(authenticated_client):
         'description': 'Jumbo Supermarkt',
         'currency': 'EUR'
     })
-    
+
     authenticated_client.post('/expenses', data={
         'date': '2025-12-12',
         'category': 'Albert Heijn',
@@ -17,9 +15,9 @@ def test_dashboard_displays_correct_totals(authenticated_client):
         'description': 'Albert Heijn',
         'currency': 'EUR'
     })
-    
+
     response = authenticated_client.get('/dashboard')
-    
+
     assert response.status_code == 200
 
 def test_dashboard_calculates_balance(authenticated_client):
@@ -30,7 +28,7 @@ def test_dashboard_calculates_balance(authenticated_client):
         'description': 'Jumbo Supermarkt',
         'currency': 'EUR'
     })
-    
+
     authenticated_client.post('/expenses', data={
         'date': '2025-12-12',
         'category': 'Albert Heijn',
@@ -38,9 +36,9 @@ def test_dashboard_calculates_balance(authenticated_client):
         'description': 'Albert Heijn',
         'currency': 'EUR'
     })
-    
+
     response = authenticated_client.get('/dashboard')
-    
+
     assert response.status_code == 200
 
 def test_dashboard_income_trend_calculation(authenticated_client):
@@ -51,7 +49,7 @@ def test_dashboard_income_trend_calculation(authenticated_client):
         'description': 'Nov salary',
         'currency': 'EUR'
     })
-    
+
     authenticated_client.post('/income', data={
         'date': '2025-12-10',
         'category': 'Salary',
@@ -59,9 +57,9 @@ def test_dashboard_income_trend_calculation(authenticated_client):
         'description': 'Dec salary',
         'currency': 'EUR'
     })
-    
+
     response = authenticated_client.get('/dashboard')
-    
+
     assert response.status_code == 200
 
 def test_dashboard_expense_trend_calculation(authenticated_client):
@@ -72,7 +70,7 @@ def test_dashboard_expense_trend_calculation(authenticated_client):
         'description': 'Nov groceries',
         'currency': 'EUR'
     })
-    
+
     authenticated_client.post('/expenses', data={
         'date': '2025-12-10',
         'category': 'Albert Heijn',
@@ -80,9 +78,9 @@ def test_dashboard_expense_trend_calculation(authenticated_client):
         'description': 'Dec groceries',
         'currency': 'EUR'
     })
-    
+
     response = authenticated_client.get('/dashboard')
-    
+
     assert response.status_code == 200
 
 def test_dashboard_recent_transactions_limit(authenticated_client):
@@ -94,9 +92,9 @@ def test_dashboard_recent_transactions_limit(authenticated_client):
             'description': f'Purchase {i}',
             'currency': 'EUR'
         })
-    
+
     response = authenticated_client.get('/dashboard')
-    
+
     assert response.status_code == 200
 
 def test_dashboard_recent_transactions_sorted(authenticated_client):
@@ -107,7 +105,7 @@ def test_dashboard_recent_transactions_sorted(authenticated_client):
         'description': 'Old',
         'currency': 'EUR'
     })
-    
+
     authenticated_client.post('/expenses', data={
         'date': '2025-12-10',
         'category': 'Albert Heijn',
@@ -115,9 +113,9 @@ def test_dashboard_recent_transactions_sorted(authenticated_client):
         'description': 'Recent',
         'currency': 'EUR'
     })
-    
+
     response = authenticated_client.get('/dashboard')
-    
+
     assert response.status_code == 200
 
 def test_dashboard_category_aggregation(authenticated_client):
@@ -128,7 +126,7 @@ def test_dashboard_category_aggregation(authenticated_client):
         'description': 'Expense 1',
         'currency': 'EUR'
     })
-    
+
     authenticated_client.post('/expenses', data={
         'date': '2025-12-12',
         'category': 'Albert Heijn',
@@ -136,14 +134,14 @@ def test_dashboard_category_aggregation(authenticated_client):
         'description': 'Expense 2',
         'currency': 'EUR'
     })
-    
+
     response = authenticated_client.get('/dashboard')
-    
+
     assert response.status_code == 200
 
 def test_dashboard_with_no_data(authenticated_client):
     response = authenticated_client.get('/dashboard')
-    
+
     assert response.status_code == 200
 
 def test_dashboard_respects_timeframe_filter(authenticated_client):
@@ -154,7 +152,7 @@ def test_dashboard_respects_timeframe_filter(authenticated_client):
         'description': 'Old expense',
         'currency': 'EUR'
     })
-    
+
     authenticated_client.post('/expenses', data={
         'date': '2025-12-10',
         'category': 'Albert Heijn',
@@ -162,11 +160,11 @@ def test_dashboard_respects_timeframe_filter(authenticated_client):
         'description': 'Recent expense',
         'currency': 'EUR'
     })
-    
+
     authenticated_client.post('/set_timeframe/1')
-    
+
     response = authenticated_client.get('/dashboard')
-    
+
     assert response.status_code == 200
 
 def test_dashboard_handles_current_month_zero_data(authenticated_client):
@@ -177,7 +175,7 @@ def test_dashboard_handles_current_month_zero_data(authenticated_client):
         'description': 'Last month',
         'currency': 'EUR'
     })
-    
+
     response = authenticated_client.get('/dashboard')
-    
+
     assert response.status_code == 200

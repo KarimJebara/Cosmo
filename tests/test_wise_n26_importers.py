@@ -10,7 +10,6 @@ from cosmo.importers import (
 )
 from cosmo.importers.generic import GenericCsvImporter
 
-
 WISE_CSV = """\
 Date,Description,Amount,Currency
 2026-04-10,Coffee in London,-4.50,GBP

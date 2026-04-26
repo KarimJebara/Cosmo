@@ -15,7 +15,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from cosmo.models import Base  # noqa: E402  (import after sys.path mutation)
+from cosmo.models import Base
 
 config = context.config
 
@@ -35,7 +35,7 @@ target_metadata = Base.metadata
 _LEGACY_TABLES = frozenset({"users", "expenses", "incomes", "budgets"})
 
 
-def _include_object(obj, name, type_, _reflected, _compare_to):  # noqa: ANN001
+def _include_object(obj, name, type_, _reflected, _compare_to):
     if type_ == "table" and name in _LEGACY_TABLES:
         return False
     return True

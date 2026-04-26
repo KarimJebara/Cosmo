@@ -11,7 +11,7 @@ import csv
 import datetime as _dt
 import io
 import logging
-from typing import Iterable
+from collections.abc import Iterable
 
 from cosmo.importers.base import ImportRecord
 

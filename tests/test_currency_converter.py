@@ -1,10 +1,9 @@
 # Currency conversion tests
-import pytest
 from currency_converter import (
-    get_exchange_rates,
     convert_to_eur,
+    format_amount_with_conversion,
     format_currency,
-    format_amount_with_conversion
+    get_exchange_rates,
 )
 
 

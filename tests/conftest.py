@@ -1,13 +1,14 @@
 import os
 import sys
+from contextlib import suppress
 from pathlib import Path
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import database  # noqa: E402
-from app import app as flask_app  # noqa: E402
+import database
+from app import app as flask_app
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -22,17 +23,13 @@ def reset_test_data_on_startup():
     ]
     for filepath in merchant_files:
         if os.path.exists(filepath):
-            try:
+            with suppress(OSError):
                 os.remove(filepath)
-            except OSError:
-                pass
 
     yield
 
-    try:
+    with suppress(Exception):
         database.drop_all_users_and_data()
-    except Exception:
-        pass
 
 
 @pytest.fixture

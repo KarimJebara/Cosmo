@@ -16,10 +16,10 @@ user. Phase 4 (accounts in the UI) will retire most of these helpers.
 from __future__ import annotations
 
 import logging
-from datetime import date as _date, datetime
-from typing import Any, Iterable
-
-logger = logging.getLogger(__name__)
+from collections.abc import Iterable
+from datetime import date as _date
+from datetime import datetime
+from typing import Any
 
 from cosmo.categorize import (
     find_match,
@@ -30,6 +30,8 @@ from cosmo.categorize import (
 from cosmo.db import get_session
 from cosmo.fx.service import default_service as default_fx_service
 from cosmo.repos import AccountRepo, BudgetRepo, CategoryRepo, TransactionRepo
+
+logger = logging.getLogger(__name__)
 
 # Until the user-level base_currency is exposed in the UI (Phase 4), every
 # user reports in EUR. The FX service still snapshots historical rates by
@@ -51,7 +53,7 @@ class _TransactionView:
     target a row without composite-key matching.
     """
 
-    __slots__ = ("id", "date", "description", "category", "amount", "currency", "type")
+    __slots__ = ("amount", "category", "currency", "date", "description", "id", "type")
 
     def __init__(
         self,
@@ -74,7 +76,7 @@ class _TransactionView:
 
 
 class _BudgetView:
-    __slots__ = ("id", "category", "limit")
+    __slots__ = ("category", "id", "limit")
 
     def __init__(self, *, id: int, category: str, limit: float) -> None:
         self.id = id
@@ -529,8 +531,13 @@ def delete_budget(user_id: int, budget_id: int) -> bool:
 
 class _RuleView:
     __slots__ = (
-        "id", "pattern", "match_type", "category_name",
-        "source", "hit_count", "last_used_at_display",
+        "category_name",
+        "hit_count",
+        "id",
+        "last_used_at_display",
+        "match_type",
+        "pattern",
+        "source",
     )
 
     def __init__(
@@ -595,8 +602,14 @@ def delete_merchant_rule(user_id: int, rule_id: int) -> bool:
 
 class _AccountView:
     __slots__ = (
-        "id", "name", "currency", "type", "balance",
-        "balance_in_base", "transaction_count", "archived",
+        "archived",
+        "balance",
+        "balance_in_base",
+        "currency",
+        "id",
+        "name",
+        "transaction_count",
+        "type",
     )
 
     def __init__(
@@ -629,8 +642,6 @@ def get_accounts(user_id: int, *, include_archived: bool = False) -> list[_Accou
     aggregated via each transaction's snapshotted base_amount, so it's
     historically accurate (no re-conversion at today's rate).
     """
-    base_currency = _DEFAULT_BASE_CURRENCY
-
     with get_session() as session:
         accounts = AccountRepo(session).list_for_user(
             user_id, include_archived=include_archived

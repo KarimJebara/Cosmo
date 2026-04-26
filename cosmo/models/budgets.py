@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from datetime import date as Date
-from typing import Optional
 
-from sqlalchemy import Date as SADate, ForeignKey, Numeric, String, UniqueConstraint
+from sqlalchemy import Date as SADate
+from sqlalchemy import ForeignKey, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from cosmo.models.base import Base, TimestampMixin
@@ -30,4 +30,4 @@ class Budget(Base, TimestampMixin):
     amount: Mapped[float] = mapped_column(Numeric(18, 4), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     starts_on: Mapped[Date] = mapped_column(SADate, nullable=False)
-    ends_on: Mapped[Optional[Date]] = mapped_column(SADate, nullable=True)
+    ends_on: Mapped[Date | None] = mapped_column(SADate, nullable=True)

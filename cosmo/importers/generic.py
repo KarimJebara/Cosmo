@@ -11,8 +11,8 @@ import csv
 import datetime as _dt
 import io
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 from cosmo.importers.base import ImportRecord
 
@@ -38,7 +38,7 @@ class GenericCsvImporter:
     def __init__(self, mapping: GenericMapping | None = None) -> None:
         self.mapping = mapping
 
-    def configure(self, mapping: GenericMapping) -> "GenericCsvImporter":
+    def configure(self, mapping: GenericMapping) -> GenericCsvImporter:
         self.mapping = mapping
         return self
 

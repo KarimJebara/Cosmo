@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -20,6 +19,6 @@ class ImportSource(Base, TimestampMixin):
     )
     kind: Mapped[str] = mapped_column(String(32), nullable=False)
     # 'revolut_csv' | 'wise_csv' | 'n26_csv' | 'generic_csv'
-    last_imported_at: Mapped[Optional[datetime]] = mapped_column(
+    last_imported_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

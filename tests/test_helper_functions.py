@@ -1,6 +1,6 @@
-import pytest
 from datetime import datetime, timedelta
-from app import linear_regression, predict_value, filter_by_timeframe
+
+from app import filter_by_timeframe, linear_regression, predict_value
 
 
 def _today() -> datetime:
@@ -91,49 +91,49 @@ def test_filter_by_timeframe_empty_list(app):
     with app.test_request_context():
         from flask import session
         session['timeframe_months'] = 12
-        
+
         result = filter_by_timeframe([])
-        
+
         assert result == []
 
 def test_linear_regression_valid_data():
     x_values = [0, 1, 2, 3, 4]
     y_values = [100, 150, 200, 250, 300]
-    
+
     slope, intercept = linear_regression(x_values, y_values)
-    
+
     assert slope == 50.0
     assert intercept == 100.0
 
 def test_linear_regression_single_point():
     x_values = [1]
     y_values = [100]
-    
+
     slope, intercept = linear_regression(x_values, y_values)
-    
+
     assert slope is None
     assert intercept is None
 
 def test_linear_regression_zero_denominator():
     x_values = [1, 1, 1, 1]
     y_values = [100, 150, 200, 250]
-    
+
     slope, intercept = linear_regression(x_values, y_values)
-    
+
     assert slope is None
     assert intercept is None
 
 def test_predict_value_valid_coefficients():
     result = predict_value(50, 100, 5)
-    
+
     assert result == 350
 
 def test_predict_value_none_slope():
     result = predict_value(None, 100, 5)
-    
+
     assert result is None
 
 def test_predict_value_none_intercept():
     result = predict_value(50, None, 5)
-    
+
     assert result is None
