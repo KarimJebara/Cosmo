@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Accounts - Cosmo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+    <style>
+        .accounts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 20px; }
+        .account-card { padding: 18px; border: 1px solid #e0e0e0; border-radius: 8px; background: white; }
+        .account-card.archived { opacity: 0.55; background: #fafafa; }
+        .account-name { font-size: 16px; font-weight: 600; margin: 0 0 4px 0; }
+        .account-currency-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; background: #e3f2fd; color: #0d47a1; font-size: 12px; font-weight: 600; }
+        .account-balance { font-size: 24px; font-weight: 700; margin: 12px 0 4px; }
+        .account-balance.negative { color: #c62828; }
+        .account-balance-base { font-size: 13px; color: #666; }
+        .account-meta { margin-top: 12px; padding-top: 12px; border-top: 1px solid #f0f0f0; font-size: 12px; color: #888; display: flex; justify-content: space-between; align-items: center; }
+        .archive-btn { background: none; border: none; color: #c62828; cursor: pointer; font-size: 12px; padding: 0; }
+        .archive-btn:hover { text-decoration: underline; }
+        .new-account-form { background: #f5faff; border: 1px solid #d0e4f5; border-radius: 8px; padding: 18px; margin-top: 24px; }
+        .new-account-form h3 { margin: 0 0 12px 0; font-size: 15px; }
+        .new-account-form .row { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+        .new-account-form .field { flex: 1; min-width: 140px; }
+        .new-account-form label { display: block; font-size: 12px; color: #555; margin-bottom: 4px; }
+        .new-account-form input, .new-account-form select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .new-account-form button { padding: 8px 16px; background: #2196f3; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; }
+        .new-account-form button:hover { background: #1976d2; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="navbar-brand">
+            <div class="navbar-avatar">{{ session.username[0].upper() if session.username else 'U' }}</div>
+            <strong>Cosmo</strong>
+        </div>
+        <div class="navbar-nav">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('accounts') }}" class="active">Accounts</a>
+            <a href="{{ url_for('income') }}">Income</a>
+            <a href="{{ url_for('expenses') }}">Expenses</a>
+            <a href="{{ url_for('budgets') }}">Budgets</a>
+            <a href="{{ url_for('reports') }}">Reports</a>
+            <a href="{{ url_for('graphs_stats') }}">Graphs &amp; Stats</a>
+            <a href="{{ url_for('rules') }}">Rules</a>
+            <a href="{{ url_for('revolut_import') }}">Import</a>
+            <a href="{{ url_for('logout') }}" style="margin-left: auto;">Logout ({{ session.username }})</a>
+        </div>
+    </div>
+
+    <div class="container container-lg">
+        <div class="page-header">
+            <div>
+                <h1>Accounts</h1>
+                <p style="color: #666; margin-top: 4px;">
+                    Each account holds a single currency. Imports route
+                    transactions to the matching account; new currencies
+                    spawn a new account automatically.
+                </p>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for message in messages %}
+                        <div class="flash-message">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="accounts-grid">
+            {% for acc in accounts %}
+                <div class="account-card {% if acc.archived %}archived{% endif %}">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <div class="account-name">{{ acc.name }}</div>
+                            <span class="account-currency-badge">{{ acc.currency }}</span>
+                        </div>
+                    </div>
+                    <div class="account-balance {% if acc.balance < 0 %}negative{% endif %}">
+                        {{ "%.2f"|format(acc.balance) }} {{ acc.currency }}
+                    </div>
+                    {% if acc.currency != 'EUR' %}
+                        <div class="account-balance-base">≈ €{{ "%.2f"|format(acc.balance_in_base) }} EUR</div>
+                    {% endif %}
+                    <div class="account-meta">
+                        <span>{{ acc.transaction_count }} transactions</span>
+                        {% if not acc.archived %}
+                            <form method="POST" action="{{ url_for('archive_account', account_id=acc.id) }}" style="margin: 0;"
+                                  onsubmit="return confirm('Archive this account? Its transactions remain.');">
+                                <button type="submit" class="archive-btn">Archive</button>
+                            </form>
+                        {% else %}
+                            <span style="color: #999;">archived</span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="new-account-form">
+            <h3>Add account</h3>
+            <form method="POST" action="{{ url_for('accounts') }}">
+                <div class="row">
+                    <div class="field">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" name="name" placeholder="e.g. UK Checking" required>
+                    </div>
+                    <div class="field" style="max-width: 120px;">
+                        <label for="currency">Currency</label>
+                        <select id="currency" name="currency" required>
+                            <option value="EUR">EUR</option>
+                            <option value="USD">USD</option>
+                            <option value="GBP">GBP</option>
+                            <option value="CHF">CHF</option>
+                            <option value="JPY">JPY</option>
+                            <option value="CAD">CAD</option>
+                            <option value="AUD">AUD</option>
+                            <option value="SEK">SEK</option>
+                            <option value="NOK">NOK</option>
+                            <option value="DKK">DKK</option>
+                            <option value="PLN">PLN</option>
+                            <option value="SGD">SGD</option>
+                            <option value="THB">THB</option>
+                        </select>
+                    </div>
+                    <div class="field" style="max-width: 140px;">
+                        <label for="type">Type</label>
+                        <select id="type" name="type">
+                            <option value="checking">Checking</option>
+                            <option value="savings">Savings</option>
+                            <option value="credit">Credit Card</option>
+                            <option value="cash">Cash</option>
+                        </select>
+                    </div>
+                    <div class="field" style="flex: 0 0 auto;">
+                        <button type="submit">Create</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <a class="back-link" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+    </div>
+</body>
+</html>

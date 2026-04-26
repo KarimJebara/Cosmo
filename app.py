@@ -9,8 +9,8 @@ from functools import wraps
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 
 import database
-from api.revolut_importer import RevolutImporter
 from cosmo import legacy_adapter
+from cosmo.importers import get_importer
 from currency_converter import convert_to_eur, format_amount_with_conversion
 from merchant_mapper import (
     ensure_merchant_files_exist,
@@ -476,50 +476,13 @@ def revolut_import():
         if file and file.filename.endswith('.csv'):
             try:
                 csv_content = file.stream.read().decode('utf-8')
-                transactions = RevolutImporter.parse_csv(csv_content)
-
-                uid = _current_user_id()
-                imported_count = 0
-                skipped_count = 0
-
-                # Pull existing transactions once for dedup, not per-row.
-                existing_incomes = legacy_adapter.get_incomes(uid)
-                existing_expenses = legacy_adapter.get_expenses(uid)
-
-                for t in transactions:
-                    is_income = t.amount >= 0
-                    tx_type = 'income' if is_income else 'expense'
-
-                    category = legacy_adapter.auto_categorize(
-                        uid, t.description, type=tx_type
-                    ) or "Other"
-
-                    record_date = t.date.strftime('%Y-%m-%d')
-                    # Income preserves sign; expense stores absolute amount.
-                    record_amount = t.amount if is_income else abs(t.amount)
-                    target_list = existing_incomes if is_income else existing_expenses
-
-                    is_duplicate = any(
-                        existing.date == record_date
-                        and existing.description == t.description
-                        and abs(float(existing.amount) - float(abs(record_amount))) < 0.01
-                        for existing in target_list
-                    )
-
-                    if not is_duplicate:
-                        legacy_adapter.add_transaction(
-                            uid,
-                            type=tx_type,
-                            date=record_date,
-                            description=t.description,
-                            category=category,
-                            amount=abs(record_amount),
-                            currency=t.currency,
-                        )
-                        imported_count += 1
-                    else:
-                        skipped_count += 1
-
+                importer = get_importer('revolut')
+                records = list(importer.parse(csv_content))
+                imported_count, skipped_count = legacy_adapter.import_transactions(
+                    _current_user_id(),
+                    source='revolut',
+                    records=records,
+                )
                 flash(
                     f'Successfully imported {imported_count} Revolut transactions! '
                     f'Skipped {skipped_count} duplicate transactions.',
@@ -681,6 +644,75 @@ def delete_budget(budget_id):
     deleted = legacy_adapter.delete_budget(_current_user_id(), budget_id)
     flash('Budget deleted successfully!' if deleted else 'Budget not found!')
     return redirect(url_for('budgets'))
+
+
+@app.route('/accounts', methods=['GET', 'POST'])
+@login_required
+def accounts():
+    if request.method == 'POST':
+        name = (request.form.get('name') or '').strip()
+        currency = (request.form.get('currency') or 'EUR').strip().upper()
+        acc_type = (request.form.get('type') or 'checking').strip()
+
+        if not name or not currency:
+            flash('Name and currency are required.')
+            return redirect(url_for('accounts'))
+        if len(currency) != 3 or not currency.isalpha():
+            flash('Currency must be a 3-letter ISO code.')
+            return redirect(url_for('accounts'))
+
+        legacy_adapter.create_account(
+            _current_user_id(), name=name, currency=currency, type=acc_type
+        )
+        flash(f'Account "{name}" created.')
+        return redirect(url_for('accounts'))
+
+    account_views = legacy_adapter.get_accounts(
+        _current_user_id(), include_archived=True
+    )
+    return render_template('accounts.html', accounts=account_views)
+
+
+@app.route('/archive_account/<int:account_id>', methods=['POST'])
+@login_required
+def archive_account(account_id):
+    archived = legacy_adapter.archive_account(_current_user_id(), account_id)
+    flash('Account archived.' if archived else 'Account not found.')
+    return redirect(url_for('accounts'))
+
+
+@app.route('/transfer', methods=['GET', 'POST'])
+@login_required
+def transfer():
+    uid = _current_user_id()
+
+    if request.method == 'POST':
+        try:
+            from_id = int(request.form.get('from_account_id') or 0)
+            to_id = int(request.form.get('to_account_id') or 0)
+            amount = float(request.form.get('amount') or 0)
+            date_str = request.form.get('date') or ''
+            description = (request.form.get('description') or '').strip()
+
+            legacy_adapter.create_transfer(
+                uid,
+                from_account_id=from_id,
+                to_account_id=to_id,
+                amount=amount,
+                date=date_str,
+                description=description,
+            )
+            flash('Transfer created.')
+        except ValueError as exc:
+            flash(f'Could not create transfer: {exc}')
+        return redirect(url_for('transfer'))
+
+    account_views = legacy_adapter.get_accounts(uid)
+    return render_template(
+        'transfer.html',
+        accounts=account_views,
+        today=datetime.now().strftime('%Y-%m-%d'),
+    )
 
 
 @app.route('/rules')
