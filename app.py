@@ -13,7 +13,6 @@ from api.revolut_importer import RevolutImporter
 from cosmo import legacy_adapter
 from currency_converter import convert_to_eur, format_amount_with_conversion
 from merchant_mapper import (
-    auto_categorize_transaction,
     ensure_merchant_files_exist,
     update_merchant_category,
 )
@@ -376,7 +375,9 @@ def income():
             flash('Invalid amount!')
             return redirect(url_for('income'))
 
-        auto_category = auto_categorize_transaction(description, transaction_type='income')
+        auto_category = legacy_adapter.auto_categorize(
+            _current_user_id(), description, type='income'
+        )
         category = auto_category if auto_category else user_category
 
         try:
@@ -427,7 +428,9 @@ def expenses():
             flash('Invalid amount!')
             return redirect(url_for('expenses'))
 
-        auto_category = auto_categorize_transaction(description, transaction_type='expenses')
+        auto_category = legacy_adapter.auto_categorize(
+            _current_user_id(), description, type='expense'
+        )
         category = auto_category if auto_category else user_category
 
         try:
@@ -486,10 +489,9 @@ def revolut_import():
                 for t in transactions:
                     is_income = t.amount >= 0
                     tx_type = 'income' if is_income else 'expense'
-                    legacy_type = 'income' if is_income else 'expenses'
 
-                    category = auto_categorize_transaction(
-                        t.description, transaction_type=legacy_type
+                    category = legacy_adapter.auto_categorize(
+                        uid, t.description, type=tx_type
                     ) or "Other"
 
                     record_date = t.date.strftime('%Y-%m-%d')
@@ -567,6 +569,9 @@ def change_income_category(date_str, amount, desc):
             flash('Income not found!')
             return redirect(url_for('income'))
 
+        # learn_from_correction in the adapter already persisted a
+        # MerchantRule. Mirror to the legacy JSON file too so any code that
+        # still reads it stays consistent until merchant_mapper is removed.
         update_merchant_category(merchant, new_category, transaction_type='income')
         flash(f'Category updated to "{new_category}" for {updated_count} transaction(s) from the same merchant!')
     except Exception as e:
@@ -606,6 +611,7 @@ def change_expense_category(date_str, amount, desc):
             flash('Expense not found!')
             return redirect(url_for('expenses'))
 
+        # See change_income_category for the dual-write rationale.
         update_merchant_category(merchant, new_category, transaction_type='expenses')
         flash(f'Category updated to "{new_category}" for {updated_count} transaction(s) from the same merchant!')
     except Exception as e:
@@ -675,6 +681,21 @@ def delete_budget(budget_id):
     deleted = legacy_adapter.delete_budget(_current_user_id(), budget_id)
     flash('Budget deleted successfully!' if deleted else 'Budget not found!')
     return redirect(url_for('budgets'))
+
+
+@app.route('/rules')
+@login_required
+def rules():
+    rule_views = legacy_adapter.get_merchant_rules(_current_user_id())
+    return render_template('rules.html', rules=rule_views)
+
+
+@app.route('/delete_rule/<int:rule_id>', methods=['POST'])
+@login_required
+def delete_rule(rule_id):
+    deleted = legacy_adapter.delete_merchant_rule(_current_user_id(), rule_id)
+    flash('Rule deleted!' if deleted else 'Rule not found.')
+    return redirect(url_for('rules'))
 
 
 @app.route('/reports')

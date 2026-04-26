@@ -18,6 +18,12 @@ from __future__ import annotations
 from datetime import date as _date, datetime
 from typing import Any, Iterable
 
+from cosmo.categorize import (
+    find_match,
+    learn_from_correction,
+    normalize_merchant,
+    record_match_used,
+)
 from cosmo.db import get_session
 from cosmo.fx.service import default_service as default_fx_service
 from cosmo.repos import AccountRepo, BudgetRepo, CategoryRepo, TransactionRepo
@@ -197,6 +203,25 @@ def add_transaction(
         account_id = account.id
 
         category_obj = CategoryRepo(session).get_or_create(user_id, category, type)
+
+        # Bookkeeping: if an existing merchant rule already maps this
+        # description to the same category, count it as a hit. Otherwise
+        # treat the user-supplied category as a teaching event and create /
+        # update the rule. Both paths only run for expense/income (the only
+        # types add_transaction accepts), and only when there's a description
+        # worth learning from.
+        if description:
+            match = find_match(session, user_id, description)
+            if match is not None and match.category_id == category_obj.id:
+                record_match_used(session, match.rule_id)
+            else:
+                learn_from_correction(
+                    session,
+                    user_id=user_id,
+                    raw_description=description,
+                    category_id=category_obj.id,
+                )
+
         tx = TransactionRepo(session).create(
             user_id=user_id,
             account_id=account_id,
@@ -207,9 +232,32 @@ def add_transaction(
             fx_rate_used=fx_rate_used,
             type=type,
             description=description,
+            merchant_normalized=normalize_merchant(description) or None,
             category_id=category_obj.id,
         )
         return tx.id
+
+
+def auto_categorize(user_id: int, description: str, type: str) -> str | None:
+    """Look up the best-matching MerchantRule for ``description`` and return
+    the category *name* the rule points at, or None if no rule matches.
+
+    Replacement for the legacy ``merchant_mapper.auto_categorize_transaction``
+    that read a global, exact-match-only JSON file. This is per-user, fuzzy,
+    and falls back to None silently when nothing's a good fit.
+    """
+    if not description:
+        return None
+    with get_session() as session:
+        match = find_match(session, user_id, description)
+        if match is None:
+            return None
+        category = CategoryRepo(session).get(match.category_id, user_id)
+        if category is None or category.type != type:
+            # Rule points at a category that's been deleted, or to the wrong
+            # type (e.g. an income-side rule applied to an expense).
+            return None
+        return category.name
 
 
 def delete_transaction_by_natural_key(
@@ -281,6 +329,16 @@ def change_category_by_natural_key(
             if (tx.description or "") == merchant:
                 tx.category_id = new_cat.id
                 updated += 1
+
+        # Teach the categorizer: future transactions whose descriptor
+        # normalizes to the same canonical form will auto-pick this category.
+        learn_from_correction(
+            session,
+            user_id=user_id,
+            raw_description=merchant,
+            category_id=new_cat.id,
+        )
+
         return updated, merchant
 
 
@@ -310,3 +368,69 @@ def set_budget(user_id: int, *, category: str, limit_amount: float) -> int:
 def delete_budget(user_id: int, budget_id: int) -> bool:
     with get_session() as session:
         return BudgetRepo(session).delete(budget_id, user_id)
+
+
+# ---------------------------------------------------------------------------
+# Merchant rules — read/delete for the /rules page
+# ---------------------------------------------------------------------------
+
+
+class _RuleView:
+    __slots__ = (
+        "id", "pattern", "match_type", "category_name",
+        "source", "hit_count", "last_used_at_display",
+    )
+
+    def __init__(
+        self,
+        *,
+        id: int,
+        pattern: str,
+        match_type: str,
+        category_name: str,
+        source: str,
+        hit_count: int,
+        last_used_at_display: str,
+    ) -> None:
+        self.id = id
+        self.pattern = pattern
+        self.match_type = match_type
+        self.category_name = category_name
+        self.source = source
+        self.hit_count = hit_count
+        self.last_used_at_display = last_used_at_display
+
+
+def get_merchant_rules(user_id: int) -> list[_RuleView]:
+    """List the user's MerchantRule rows decorated with category names for
+    the /rules page. Sorted by hit_count desc (most-trusted first)."""
+    from cosmo.repos import MerchantRuleRepo
+
+    with get_session() as session:
+        rules = MerchantRuleRepo(session).list_for_user(user_id)
+        cats = {c.id: c.name for c in CategoryRepo(session).list_for_user(user_id)}
+
+        def _fmt(when) -> str:
+            if when is None:
+                return ""
+            return when.strftime("%Y-%m-%d %H:%M")
+
+        return [
+            _RuleView(
+                id=r.id,
+                pattern=r.pattern,
+                match_type=r.match_type,
+                category_name=cats.get(r.category_id, "Unknown"),
+                source=r.source,
+                hit_count=r.hit_count or 0,
+                last_used_at_display=_fmt(r.last_used_at),
+            )
+            for r in rules
+        ]
+
+
+def delete_merchant_rule(user_id: int, rule_id: int) -> bool:
+    from cosmo.repos import MerchantRuleRepo
+
+    with get_session() as session:
+        return MerchantRuleRepo(session).delete(rule_id, user_id)

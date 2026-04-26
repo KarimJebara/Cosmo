@@ -13,6 +13,13 @@ created_at, broke IDs, and was unsafe under concurrent writes.
 from cosmo.repos.accounts import AccountRepo
 from cosmo.repos.budgets import BudgetRepo
 from cosmo.repos.categories import CategoryRepo
+from cosmo.repos.merchant_rules import MerchantRuleRepo
 from cosmo.repos.transactions import TransactionRepo
 
-__all__ = ["AccountRepo", "BudgetRepo", "CategoryRepo", "TransactionRepo"]
+__all__ = [
+    "AccountRepo",
+    "BudgetRepo",
+    "CategoryRepo",
+    "MerchantRuleRepo",
+    "TransactionRepo",
+]
