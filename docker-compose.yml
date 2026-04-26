@@ -1,0 +1,33 @@
+services:
+  cosmo:
+    build: .
+    image: cosmo:local
+    container_name: cosmo
+    restart: unless-stopped
+    ports:
+      - "${COSMO_PORT:-5002}:5002"
+    environment:
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set in .env}
+      DATABASE_URL: sqlite:////data/budget_tracker.db
+      DEFAULT_BASE_CURRENCY: ${DEFAULT_BASE_CURRENCY:-EUR}
+      FX_PROVIDER: ${FX_PROVIDER:-frankfurter}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
+    volumes:
+      - cosmo-data:/data
+
+  # Optional: nightly FX refresh. Wire up via your host crontab or unpause
+  # this service and use a cron sidecar like ofelia.
+  #
+  # fx-refresh:
+  #   image: cosmo:local
+  #   depends_on: [cosmo]
+  #   restart: "no"
+  #   environment:
+  #     DATABASE_URL: sqlite:////data/budget_tracker.db
+  #   volumes:
+  #     - cosmo-data:/data
+  #   command: ["python", "cli.py", "refresh-fx"]
+
+volumes:
+  cosmo-data:

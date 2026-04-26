@@ -20,3 +20,6 @@ requests==2.32.3
 
 # Config
 python-dotenv==1.0.1
+
+# Production WSGI
+gunicorn==23.0.0
