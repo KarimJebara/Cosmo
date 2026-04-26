@@ -22,7 +22,11 @@ env/
 
 # Database and data files
 data/budget_tracker.db
+data/budget_tracker.db-wal
+data/budget_tracker.db-shm
 data/cosmo.db
+data/cosmo.db-wal
+data/cosmo.db-shm
 data/merchant_category_expenses.json
 data/merchant_category_income.json
 
