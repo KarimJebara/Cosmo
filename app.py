@@ -9,6 +9,15 @@ from flask import Flask, flash, redirect, render_template, request, session, url
 
 import database
 from cosmo import legacy_adapter
+from cosmo.analytics import (
+    category_drift,
+    cumulative_balance_series,
+    currency_exposure,
+    detect_subscriptions,
+    saving_rate,
+    spend_by_account,
+    top_merchants,
+)
 from cosmo.importers import get_importer
 from currency_converter import format_amount_with_conversion
 from merchant_mapper import (
@@ -1159,8 +1168,51 @@ def graphs_stats():
         else:
             days_until_low = float('inf')
 
+        # ===== TIER 1 INSIGHTS =====
+        # Currency exposure: separate income vs expenses by original currency.
+        income_currency_slices = currency_exposure(incomes)
+        expense_currency_slices = currency_exposure(expenses)
+
+        # Spend by account.
+        accounts = legacy_adapter.get_accounts(uid)
+        account_spend = spend_by_account(expenses, accounts)
+
+        # Recurring subscription detector — uses the last 90 days regardless
+        # of timeframe, otherwise the user has to be in 12-month view to see it.
+        all_expenses_full = legacy_adapter.get_expenses(uid)
+        subscriptions = detect_subscriptions(all_expenses_full, lookback_days=90)
+        subscription_total_eur = sum(s.monthly_eur for s in subscriptions)
+
+        # Cumulative balance line over the active timeframe.
+        cumulative_points = cumulative_balance_series(incomes, expenses)
+        cumulative_labels = [p.date for p in cumulative_points]
+        cumulative_values = [p.balance for p in cumulative_points]
+
+        # ===== TIER 2 INSIGHTS =====
+        savings = saving_rate(total_income, total_expenses)
+        merchant_leaderboard = top_merchants(expenses, n=10)
+
+        # Category drift: compare current period vs the 3 prior periods of
+        # equal length. Build the baseline window by extending the cutoff back.
+        baseline_months = max(timeframe_months, 1) * 3
+        baseline_cutoff = datetime.now() - timedelta(days=(timeframe_months + baseline_months) * 30)
+        current_cutoff = datetime.now() - timedelta(days=timeframe_months * 30)
+        baseline_expenses = []
+        for e in all_expenses_full:
+            d = getattr(e, 'date', '')
+            try:
+                dt = datetime.strptime(d, '%Y-%m-%d')
+            except (ValueError, TypeError):
+                continue
+            if baseline_cutoff <= dt < current_cutoff:
+                baseline_expenses.append(e)
+        drift = category_drift(expenses, baseline_expenses, baseline_periods=3)
+        # Surface only the categories that actually drifted.
+        drift_above = [d for d in drift if d.direction == "above"][:5]
+        drift_below = [d for d in drift if d.direction == "below"][:3]
+
     except Exception as e:
-        print(f"Error in graphs_stats: {e}")
+        logging.getLogger(__name__).exception("Error in graphs_stats: %s", e)
         total_income = total_expenses = balance = 0
         category_labels = category_values = []
         top_cat_names = top_cat_values = []
@@ -1177,6 +1229,14 @@ def graphs_stats():
         top_pred_categories = {}
         max_pred_category_value = 1
         days_until_low = float('inf')
+        income_currency_slices = expense_currency_slices = []
+        account_spend = []
+        subscriptions = []
+        subscription_total_eur = 0
+        cumulative_labels = cumulative_values = []
+        savings = saving_rate(0, 0)
+        merchant_leaderboard = []
+        drift_above = drift_below = []
 
     return render_template('graphs_stats.html',
                            total_income=total_income,
@@ -1207,7 +1267,18 @@ def graphs_stats():
                            top_pred_categories=top_pred_categories,
                            max_pred_category_value=max_pred_category_value,
                            days_until_low=days_until_low,
-                           timeframe_months=timeframe_months)
+                           timeframe_months=timeframe_months,
+                           income_currency_slices=income_currency_slices,
+                           expense_currency_slices=expense_currency_slices,
+                           account_spend=account_spend,
+                           subscriptions=subscriptions,
+                           subscription_total_eur=subscription_total_eur,
+                           cumulative_labels=cumulative_labels,
+                           cumulative_values=cumulative_values,
+                           savings=savings,
+                           merchant_leaderboard=merchant_leaderboard,
+                           drift_above=drift_above,
+                           drift_below=drift_below)
 
 
 

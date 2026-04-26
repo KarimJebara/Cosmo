@@ -53,7 +53,18 @@ class _TransactionView:
     target a row without composite-key matching.
     """
 
-    __slots__ = ("amount", "category", "currency", "date", "description", "id", "type")
+    __slots__ = (
+        "account_id",
+        "amount",
+        "base_amount",
+        "category",
+        "currency",
+        "date",
+        "description",
+        "id",
+        "merchant_normalized",
+        "type",
+    )
 
     def __init__(
         self,
@@ -65,6 +76,9 @@ class _TransactionView:
         amount: float,
         currency: str,
         type: str,
+        base_amount: float = 0.0,
+        account_id: int = 0,
+        merchant_normalized: str | None = None,
     ) -> None:
         self.id = id
         self.date = date
@@ -73,6 +87,9 @@ class _TransactionView:
         self.amount = amount
         self.currency = currency
         self.type = type
+        self.base_amount = base_amount
+        self.account_id = account_id
+        self.merchant_normalized = merchant_normalized
 
 
 class _BudgetView:
@@ -125,6 +142,9 @@ def _txs_to_views(txs: Iterable, cat_lookup: dict[int, str]) -> list[_Transactio
                 amount=float(tx.original_amount),
                 currency=tx.original_currency,
                 type=tx.type,
+                base_amount=float(tx.base_amount or 0.0),
+                account_id=tx.account_id,
+                merchant_normalized=tx.merchant_normalized,
             )
         )
     return out

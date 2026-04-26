@@ -27,6 +27,236 @@
 {% endblock %}
 
 {% block content %}
+{# ===== TIER 1 INSIGHTS — top of page ===== #}
+
+{# 1. Saving rate gauge — quick read #}
+{% if savings %}
+<section class="bg-white rounded-[14px] border border-zinc-200 p-6 shadow-sm">
+    <div class="flex items-start gap-6">
+        <div class="shrink-0">
+            <div class="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Saving rate</div>
+            <div class="text-5xl font-bold tabular-nums font-display mt-1
+                        {% if savings.band == 'great' %}text-emerald-600
+                        {% elif savings.band == 'good' %}text-emerald-500
+                        {% elif savings.band == 'low' %}text-amber-600
+                        {% else %}text-rose-600{% endif %}">{{ "%.1f"|format(savings.rate_pct) }}%</div>
+            <div class="text-sm text-zinc-500 mt-1">{{ savings.label }}</div>
+        </div>
+        <div class="flex-1 self-center">
+            <div class="relative h-3 rounded-full overflow-hidden bg-zinc-100">
+                {# zone bands as a static reference scale 0..50 #}
+                <div class="absolute inset-y-0 bg-rose-100" style="left:0%;width:30%"></div>
+                <div class="absolute inset-y-0 bg-amber-100" style="left:30%;width:30%"></div>
+                <div class="absolute inset-y-0 bg-emerald-100" style="left:60%;width:40%"></div>
+                {% set capped = [0, [savings.rate_pct, 50]|min]|max %}
+                <div class="absolute inset-y-0 left-0 bg-[#3b5bdb]"
+                     style="width: {{ (capped + 0) / 50 * 100 }}%; max-width: 100%;"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-zinc-400 mt-1 tabular-nums">
+                <span>0%</span><span>15%</span><span>30%</span><span>50%+</span>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+{# 2. Currency exposure — the expat wedge #}
+{% if income_currency_slices or expense_currency_slices %}
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    {% for label, slices, accent in [
+        ('Income by currency', income_currency_slices, 'emerald'),
+        ('Expenses by currency', expense_currency_slices, 'rose')
+    ] %}
+    <div class="bg-white rounded-[14px] border border-zinc-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-zinc-200">
+            <h3 class="font-display font-semibold text-zinc-900">{{ label }}</h3>
+            <p class="text-xs text-zinc-500 mt-0.5">Native amount + EUR equivalent + % share</p>
+        </div>
+        <div class="p-5">
+            {% if slices %}
+            <div class="space-y-3">
+                {% for s in slices %}
+                <div>
+                    <div class="flex items-baseline justify-between text-sm mb-1.5">
+                        <span class="font-medium text-zinc-700">
+                            {{ s.currency }}
+                            <span class="text-xs text-zinc-400">— {{ s.native_total|money }} {{ s.currency }}</span>
+                        </span>
+                        <span class="font-semibold tabular-nums text-zinc-900">{{ s.base_total|money }} EUR</span>
+                    </div>
+                    <div class="w-full bg-zinc-100 rounded-full h-2 overflow-hidden">
+                        <div class="h-2 rounded-full {% if accent == 'emerald' %}bg-emerald-500{% else %}bg-rose-500{% endif %}"
+                             style="width: {{ s.share_pct }}%"></div>
+                    </div>
+                    <div class="text-[11px] text-zinc-400 mt-1 tabular-nums">{{ "%.1f"|format(s.share_pct) }}% of total</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-zinc-500">No data in this timeframe.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</section>
+{% endif %}
+
+{# 3. Spend by account #}
+{% if account_spend %}
+<section class="bg-white rounded-[14px] border border-zinc-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-zinc-200">
+        <h3 class="font-display font-semibold text-zinc-900">Spend by account</h3>
+        <p class="text-xs text-zinc-500 mt-0.5">Total expenses per account, in EUR base</p>
+    </div>
+    <div class="p-5 space-y-3">
+        {% set max_acc = (account_spend|map(attribute='base_total')|max) or 1 %}
+        {% for acc in account_spend %}
+        <div>
+            <div class="flex items-baseline justify-between text-sm mb-1.5">
+                <span class="font-medium text-zinc-700">
+                    {{ acc.name }}
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-100 text-zinc-500 ml-1">{{ acc.currency }}</span>
+                    <span class="text-xs text-zinc-400">— {{ acc.transaction_count }} tx</span>
+                </span>
+                <span class="font-semibold tabular-nums text-zinc-900">{{ acc.base_total|money }} EUR</span>
+            </div>
+            <div class="w-full bg-zinc-100 rounded-full h-2">
+                <div class="bg-[#3b5bdb] h-2 rounded-full"
+                     style="width: {{ (acc.base_total / max_acc * 100)|round(1) }}%"></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{# 4. Recurring subscriptions #}
+{% if subscriptions %}
+<section class="bg-white rounded-[14px] border border-zinc-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-zinc-200 flex items-baseline justify-between">
+        <div>
+            <h3 class="font-display font-semibold text-zinc-900">Recurring charges detected</h3>
+            <p class="text-xs text-zinc-500 mt-0.5">Merchants seen ≥3 times in the last 90 days with stable amounts</p>
+        </div>
+        <div class="text-right">
+            <div class="text-2xl font-bold text-zinc-900 tabular-nums font-display">{{ subscription_total_eur|money }} EUR</div>
+            <div class="text-[11px] text-zinc-500">total per month</div>
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+            <thead class="bg-zinc-50/50 text-[12px] uppercase text-zinc-500 tracking-wider font-medium border-b border-zinc-200">
+                <tr>
+                    <th class="py-3 px-5 font-medium">Merchant</th>
+                    <th class="py-3 px-5 font-medium text-right">Per cycle</th>
+                    <th class="py-3 px-5 font-medium text-right">Monthly equiv.</th>
+                    <th class="py-3 px-5 font-medium text-right">Charges</th>
+                    <th class="py-3 px-5 font-medium">Last seen</th>
+                    <th class="py-3 px-5 font-medium">Next expected</th>
+                </tr>
+            </thead>
+            <tbody class="text-zinc-700 divide-y divide-zinc-100">
+                {% for sub in subscriptions %}
+                <tr class="hover:bg-zinc-50">
+                    <td class="py-3 px-5 font-medium text-zinc-900">{{ sub.merchant }}</td>
+                    <td class="py-3 px-5 text-right tabular-nums">{{ sub.avg_amount_eur|money }} EUR</td>
+                    <td class="py-3 px-5 text-right tabular-nums font-semibold text-zinc-900">{{ sub.monthly_eur|money }} EUR</td>
+                    <td class="py-3 px-5 text-right tabular-nums text-zinc-500">{{ sub.occurrences }}</td>
+                    <td class="py-3 px-5 tabular-nums text-zinc-500">{{ sub.last_charge }}</td>
+                    <td class="py-3 px-5 tabular-nums text-zinc-500">{{ sub.next_expected }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+{# 5. Cumulative balance line — the "wealth curve" #}
+{% if cumulative_labels %}
+<section class="bg-white rounded-[14px] border border-zinc-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-zinc-200">
+        <h3 class="font-display font-semibold text-zinc-900">Wealth curve</h3>
+        <p class="text-xs text-zinc-500 mt-0.5">Running net balance over the timeframe (EUR base)</p>
+    </div>
+    <div class="p-6"><div class="h-[280px] relative"><canvas id="cumulativeChart"></canvas></div></div>
+</section>
+{% endif %}
+
+{# 6. Category drift / anomaly flags #}
+{% if drift_above or drift_below %}
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <div class="bg-white rounded-[14px] border border-zinc-200 shadow-sm p-5">
+        <h3 class="font-display font-semibold text-zinc-900">Above your baseline</h3>
+        <p class="text-xs text-zinc-500 mt-0.5 mb-3">Categories spending more than your last 3 periods average</p>
+        {% if drift_above %}
+        <div class="space-y-2">
+            {% for d in drift_above %}
+            <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-rose-50">
+                <span class="text-sm font-medium text-zinc-900">{{ d.category }}</span>
+                <span class="text-sm font-semibold tabular-nums text-rose-700">+{{ "%.0f"|format(d.delta_pct) }}%</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-zinc-500">Nothing flagged — spending is consistent.</p>
+        {% endif %}
+    </div>
+    <div class="bg-white rounded-[14px] border border-zinc-200 shadow-sm p-5">
+        <h3 class="font-display font-semibold text-zinc-900">Below your baseline</h3>
+        <p class="text-xs text-zinc-500 mt-0.5 mb-3">Categories you've cut compared to recent history</p>
+        {% if drift_below %}
+        <div class="space-y-2">
+            {% for d in drift_below %}
+            <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-emerald-50">
+                <span class="text-sm font-medium text-zinc-900">{{ d.category }}</span>
+                <span class="text-sm font-semibold tabular-nums text-emerald-700">{{ "%.0f"|format(d.delta_pct) }}%</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-zinc-500">Nothing flagged — spending is consistent.</p>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+
+{# 7. Top merchants leaderboard #}
+{% if merchant_leaderboard %}
+<section class="bg-white rounded-[14px] border border-zinc-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-zinc-200">
+        <h3 class="font-display font-semibold text-zinc-900">Top merchants</h3>
+        <p class="text-xs text-zinc-500 mt-0.5">Where your money actually goes — count + total + average per visit</p>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+            <thead class="bg-zinc-50/50 text-[12px] uppercase text-zinc-500 tracking-wider font-medium border-b border-zinc-200">
+                <tr>
+                    <th class="py-3 px-5 font-medium">Merchant</th>
+                    <th class="py-3 px-5 font-medium text-right">Visits</th>
+                    <th class="py-3 px-5 font-medium text-right">Avg / visit</th>
+                    <th class="py-3 px-5 font-medium text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody class="text-zinc-700 divide-y divide-zinc-100">
+                {% for m in merchant_leaderboard %}
+                <tr class="hover:bg-zinc-50">
+                    <td class="py-3 px-5 font-medium text-zinc-900">{{ m.merchant }}</td>
+                    <td class="py-3 px-5 text-right tabular-nums text-zinc-500">{{ m.count }}</td>
+                    <td class="py-3 px-5 text-right tabular-nums">{{ m.avg_eur|money }} EUR</td>
+                    <td class="py-3 px-5 text-right tabular-nums font-semibold text-zinc-900">{{ m.total_eur|money }} EUR</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+<hr class="border-zinc-200">
+
+{# ===== Existing descriptive stats below ===== #}
+
 {% macro stat_card(title, value, foot=None, accent='zinc') %}
 <div class="bg-white rounded-[14px] border border-zinc-200 p-4 shadow-sm">
     <div class="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">{{ title }}</div>
@@ -214,6 +444,36 @@
         const pct = parseFloat(el.dataset.percent) || 0;
         el.style.width = Math.max(0, Math.min(100, pct)) + '%';
     });
+
+    {% if cumulative_labels %}
+    new Chart(document.getElementById('cumulativeChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: {{ cumulative_labels|tojson }},
+            datasets: [{
+                label: 'Net balance',
+                data: {{ cumulative_values|tojson }},
+                borderColor: '#3b5bdb',
+                backgroundColor: 'rgba(59, 91, 219, 0.08)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.25,
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                pointHoverBackgroundColor: '#3b5bdb',
+                pointHoverBorderColor: '#fff',
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, animation: false,
+            plugins: { legend: { display: false }, tooltip: { intersect: false, mode: 'index' } },
+            scales: {
+                x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } },
+                y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { callback: (v) => v.toLocaleString() + ' EUR' } }
+            }
+        }
+    });
+    {% endif %}
 
     const palette = ['#3b5bdb', '#6366f1', '#a5b4fc', '#14b8a6', '#f59e0b', '#10b981', '#71717a', '#d97706', '#475569', '#0ea5e9'];
 
