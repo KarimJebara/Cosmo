@@ -6,7 +6,7 @@
 
 **Current repo state.** Flask 3.1 web app, ~1,600 LOC, raw SQLite, monolithic `app.py` (1151 lines), JSON-file merchant map, free FX API, SHA-256 password hashing. Inherited name "Habit Hunter" doesn't match what the code does. README/folder/subfolder use three different names. Tests exist (18 files, ~75KB) — a real foundation, not a toy.
 
-**Outcome we want.** A v1, self-hosted, OSS budget tracker that beats Actual on multi-currency UX and beats Firefly on simplicity. Codename: **Cosmo** (placeholder; final name TBD with user). MIT-licensed, Docker-deployable, ~2 month effort.
+**Outcome we want.** A v1, self-hosted, OSS budget tracker that beats Actual on multi-currency UX and beats Firefly on simplicity. Name: **Cosmo**. MIT-licensed, Docker-deployable, ~2 month effort.
 
 ---
 
@@ -211,4 +211,3 @@ Key invariants:
 - Mobile app — PWA only for v1; native later if traction.
 - LLM-based categorization — fuzzy matching covers 80%; LLM is a v2 add-on, optional plugin.
 - Couples/shared budgets — Phase 9; needs auth/permissions rework.
-- Final product name — placeholder "Cosmo" used throughout; user picks before Phase 0 ships.

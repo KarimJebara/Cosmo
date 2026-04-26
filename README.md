@@ -1,8 +1,8 @@
-# Cosmo *(working name)*
+# Cosmo
 
 **A self-hosted, multi-currency budget tracker for expats and digital nomads.**
 
-> ⚠️ **Status: pre-v1.** Active rewrite in progress on `cosmo-v1`. See [`docs/PLAN.md`](#roadmap) for the 8-week roadmap. The `main` branch is the older "Habit Hunter" / Budget-Tracker code; new development happens on `cosmo-v1`.
+> ⚠️ **Status: pre-v1.** Active rewrite in progress on `cosmo-v1`. See [`docs/PLAN.md`](#roadmap) for the full roadmap.
 
 ---
 
@@ -27,11 +27,11 @@ Cosmo's goal is the gap in the middle: **simple like Actual, multi-currency like
 - **Self-hostable.** Single `docker compose up` on a homelab or VPS. SQLite by default; Postgres optional.
 - **Privacy-first.** No bank API needed. No data leaves your server. MIT-licensed.
 
-## Quick start (current main-branch code)
+## Quick start
 
 ```bash
-git clone https://github.com/<you>/cosmo.git
-cd cosmo
+git clone https://github.com/KarimJebara/Cosmo.git
+cd Cosmo
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
