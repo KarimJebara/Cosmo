@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from sqlalchemy import Boolean, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,8 +18,8 @@ class Category(Base):
     )
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     type: Mapped[str] = mapped_column(String(8), nullable=False)  # 'income' | 'expense'
-    parent_id: Mapped[Optional[int]] = mapped_column(
+    parent_id: Mapped[int | None] = mapped_column(
         ForeignKey("categories.id", ondelete="SET NULL"), nullable=True
     )
-    color: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    color: Mapped[str | None] = mapped_column(String(16), nullable=True)
     archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

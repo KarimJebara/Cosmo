@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -31,7 +30,7 @@ class MerchantRule(Base, TimestampMixin):
         ForeignKey("categories.id", ondelete="CASCADE"), nullable=False
     )
     hit_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    last_used_at: Mapped[Optional[datetime]] = mapped_column(
+    last_used_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     source: Mapped[str] = mapped_column(String(8), default="user", nullable=False)

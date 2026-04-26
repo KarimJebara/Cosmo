@@ -7,8 +7,8 @@ so FK constraints actually fire.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
@@ -23,9 +23,14 @@ def _make_engine(url: str) -> Engine:
 
     if url.startswith("sqlite"):
         @event.listens_for(engine, "connect")
-        def _enable_fk(dbapi_conn, _conn_record):
+        def _on_connect(dbapi_conn, _conn_record):
             cursor = dbapi_conn.cursor()
             cursor.execute("PRAGMA foreign_keys = ON")
+            # WAL gives readers + one writer concurrency; prevents nested-session
+            # write contention on operations like importers that walk a list of
+            # records and look up FX rates per row.
+            cursor.execute("PRAGMA journal_mode = WAL")
+            cursor.execute("PRAGMA busy_timeout = 5000")
             cursor.close()
 
     return engine

@@ -15,13 +15,13 @@ from cosmo.models.transactions import Transaction
 from cosmo.models.users import User
 
 __all__ = [
-    "Base",
-    "User",
     "Account",
-    "Category",
-    "Transaction",
+    "Base",
     "Budget",
-    "MerchantRule",
+    "Category",
     "FxRate",
     "ImportSource",
+    "MerchantRule",
+    "Transaction",
+    "User",
 ]

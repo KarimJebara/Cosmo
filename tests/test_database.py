@@ -1,7 +1,9 @@
 # Database tests
-import pytest
-import database
 import os
+
+import pytest
+
+import database
 
 
 @pytest.fixture

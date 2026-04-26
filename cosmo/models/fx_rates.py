@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from datetime import date as Date, datetime, timezone
+from datetime import UTC, datetime
+from datetime import date as Date
 
-from sqlalchemy import Date as SADate, DateTime, Numeric, String, UniqueConstraint
+from sqlalchemy import Date as SADate
+from sqlalchemy import DateTime, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from cosmo.models.base import Base
@@ -31,6 +33,6 @@ class FxRate(Base):
     source: Mapped[str] = mapped_column(String(32), nullable=False)
     fetched_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         nullable=False,
     )

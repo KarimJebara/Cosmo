@@ -1,5 +1,3 @@
-import pytest
-from database import init_db, drop_all_users_and_data
 
 def test_add_expense_valid_data(authenticated_client):
     response = authenticated_client.post('/expenses', data={
@@ -9,7 +7,7 @@ def test_add_expense_valid_data(authenticated_client):
         'description': 'Albert Heijn',
         'currency': 'EUR'
     }, follow_redirects=True)
-    
+
     assert response.status_code == 200
     assert b'Expense added successfully' in response.data
 
@@ -20,7 +18,7 @@ def test_add_expense_missing_date(authenticated_client):
         'description': 'Albert Heijn',
         'currency': 'EUR'
     }, follow_redirects=True)
-    
+
     assert b'All fields are required' in response.data
 
 def test_add_expense_missing_category(authenticated_client):
@@ -30,7 +28,7 @@ def test_add_expense_missing_category(authenticated_client):
         'description': 'Albert Heijn',
         'currency': 'EUR'
     }, follow_redirects=True)
-    
+
     assert b'All fields are required' in response.data
 
 def test_add_expense_missing_amount(authenticated_client):
@@ -40,7 +38,7 @@ def test_add_expense_missing_amount(authenticated_client):
         'description': 'Albert Heijn',
         'currency': 'EUR'
     }, follow_redirects=True)
-    
+
     assert b'All fields are required' in response.data
 
 def test_add_expense_negative_amount(authenticated_client):
@@ -51,7 +49,7 @@ def test_add_expense_negative_amount(authenticated_client):
         'description': 'Albert Heijn',
         'currency': 'EUR'
     }, follow_redirects=True)
-    
+
     assert b'Invalid amount' in response.data
 
 def test_add_expense_zero_amount(authenticated_client):
@@ -62,7 +60,7 @@ def test_add_expense_zero_amount(authenticated_client):
         'description': 'Albert Heijn',
         'currency': 'EUR'
     }, follow_redirects=True)
-    
+
     assert b'Invalid amount' in response.data
 
 def test_add_expense_invalid_amount_format(authenticated_client):
@@ -73,7 +71,7 @@ def test_add_expense_invalid_amount_format(authenticated_client):
         'description': 'Albert Heijn',
         'currency': 'EUR'
     }, follow_redirects=True)
-    
+
     assert b'Invalid amount' in response.data
 
 def test_add_expense_with_description(authenticated_client):
@@ -84,7 +82,7 @@ def test_add_expense_with_description(authenticated_client):
         'description': 'Weekly groceries from supermarket',
         'currency': 'EUR'
     }, follow_redirects=True)
-    
+
     assert response.status_code == 200
     assert b'Expense added successfully' in response.data
 
@@ -95,7 +93,7 @@ def test_add_expense_without_description(authenticated_client):
         'amount': '50.00',
         'currency': 'EUR'
     }, follow_redirects=True)
-    
+
     assert response.status_code == 200
     assert b'Expense added successfully' in response.data
 
@@ -106,7 +104,7 @@ def test_add_expense_default_currency(authenticated_client):
         'amount': '50.00',
         'description': 'Albert Heijn'
     }, follow_redirects=True)
-    
+
     assert response.status_code == 200
     assert b'Expense added successfully' in response.data
 
@@ -118,7 +116,7 @@ def test_add_expense_custom_currency(authenticated_client):
         'description': 'Albert Heijn',
         'currency': 'USD'
     }, follow_redirects=True)
-    
+
     assert response.status_code == 200
     assert b'Expense added successfully' in response.data
 
@@ -130,14 +128,14 @@ def test_delete_expense_valid_id(authenticated_client):
         'description': 'Albert Heijn',
         'currency': 'EUR'
     })
-    
+
     response = authenticated_client.post('/delete_expense/2025-12-10/50.0/Albert%20Heijn', follow_redirects=True)
-    
+
     assert b'Expense deleted successfully' in response.data
 
 def test_delete_expense_invalid_id(authenticated_client):
     response = authenticated_client.post('/delete_expense/2025-12-10/999.0/Unknown%20Merchant', follow_redirects=True)
-    
+
     assert b'Expense not found' in response.data
 
 def test_delete_expense_out_of_range_id(authenticated_client):
@@ -148,9 +146,9 @@ def test_delete_expense_out_of_range_id(authenticated_client):
         'description': 'Albert Heijn',
         'currency': 'EUR'
     })
-    
+
     response = authenticated_client.post('/delete_expense/2025-12-10/999.0/Wrong%20Amount', follow_redirects=True)
-    
+
     assert b'Expense not found' in response.data
 
 def test_change_expense_category_valid(authenticated_client):
@@ -161,11 +159,11 @@ def test_change_expense_category_valid(authenticated_client):
         'description': 'Dirk purchase',
         'currency': 'EUR'
     })
-    
+
     response = authenticated_client.post('/change_expense_category/2025-12-10/50.0/Dirk%20purchase', data={
         'new_category': 'Shopping'
     }, follow_redirects=True)
-    
+
     assert b'Category updated' in response.data
 
 def test_change_expense_category_updates_all_same_merchant(authenticated_client):
@@ -176,7 +174,7 @@ def test_change_expense_category_updates_all_same_merchant(authenticated_client)
         'description': 'C1000',
         'currency': 'EUR'
     })
-    
+
     authenticated_client.post('/expenses', data={
         'date': '2025-12-12',
         'category': 'Albert Heijn',
@@ -184,11 +182,11 @@ def test_change_expense_category_updates_all_same_merchant(authenticated_client)
         'description': 'C1000',
         'currency': 'EUR'
     })
-    
+
     response = authenticated_client.post('/change_expense_category/2025-12-10/50.0/C1000', data={
         'new_category': 'Shopping'
     }, follow_redirects=True)
-    
+
     assert b'2 transaction(s)' in response.data
 
 def test_change_expense_category_missing_category(authenticated_client):
@@ -199,9 +197,9 @@ def test_change_expense_category_missing_category(authenticated_client):
         'description': 'Albert Heijn',
         'currency': 'EUR'
     })
-    
+
     response = authenticated_client.post('/change_expense_category/2025-12-10/50.0/Albert%20Heijn', data={}, follow_redirects=True)
-    
+
     assert b'Please select a category' in response.data
 
 def test_expense_auto_categorization(authenticated_client):
@@ -212,7 +210,7 @@ def test_expense_auto_categorization(authenticated_client):
         'description': 'Jumbo Supermarkt',
         'currency': 'EUR'
     })
-    
+
     response = authenticated_client.post('/expenses', data={
         'date': '2025-12-12',
         'category': 'Other',
@@ -220,5 +218,5 @@ def test_expense_auto_categorization(authenticated_client):
         'description': 'Jumbo Supermarkt',
         'currency': 'EUR'
     }, follow_redirects=True)
-    
+
     assert response.status_code == 200

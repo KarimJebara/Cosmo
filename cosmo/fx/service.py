@@ -20,8 +20,9 @@ library — they never make real HTTP calls.
 from __future__ import annotations
 
 import logging
-from datetime import date as Date, datetime, timedelta, timezone
-from typing import Sequence
+from collections.abc import Sequence
+from datetime import UTC, datetime, timedelta
+from datetime import date as Date
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -136,7 +137,7 @@ class FxService:
                 rate=rate,
                 date=on_date,
                 source=self._providers[0].name if self._providers else "unknown",
-                fetched_at=datetime.now(timezone.utc),
+                fetched_at=datetime.now(UTC),
             )
         )
         session.flush()

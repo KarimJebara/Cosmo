@@ -24,17 +24,17 @@ This revision is data-only; no schema changes.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
-from typing import Sequence, Union
+from collections.abc import Sequence
+from datetime import UTC, date, datetime
 
 import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "8ca0cc298470"
-down_revision: Union[str, None] = "72ec70b2de44"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "72ec70b2de44"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def _legacy_tables_present(conn) -> bool:
@@ -61,7 +61,7 @@ def upgrade() -> None:
     if not _legacy_tables_present(bind):
         return  # Fresh DB — nothing to backfill.
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     today = date.today()
     month_start = today.replace(day=1)
 

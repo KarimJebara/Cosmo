@@ -1,10 +1,9 @@
-import pytest
 
 
 def test_reports_page_loads(authenticated_client):
     """Test reports page loads successfully."""
     response = authenticated_client.get('/reports')
-    
+
     assert response.status_code == 200
 
 
@@ -17,7 +16,7 @@ def test_report_total_income(authenticated_client):
         'description': 'Jumbo Supermarkt',
         'currency': 'EUR'
     })
-    
+
     authenticated_client.post('/income', data={
         'date': '2025-12-11',
         'category': 'Freelance',
@@ -25,9 +24,9 @@ def test_report_total_income(authenticated_client):
         'description': 'Frites van Piet',
         'currency': 'EUR'
     })
-    
+
     response = authenticated_client.get('/reports')
-    
+
     assert response.status_code == 200
 
 
@@ -40,7 +39,7 @@ def test_report_total_expenses(authenticated_client):
         'description': 'Albert Heijn',
         'currency': 'EUR'
     })
-    
+
     authenticated_client.post('/expenses', data={
         'date': '2025-12-11',
         'category': 'OVpay',
@@ -48,9 +47,9 @@ def test_report_total_expenses(authenticated_client):
         'description': 'OVpay',
         'currency': 'EUR'
     })
-    
+
     response = authenticated_client.get('/reports')
-    
+
     assert response.status_code == 200
 
 
@@ -63,7 +62,7 @@ def test_report_balance(authenticated_client):
         'description': 'Jumbo Supermarkt',
         'currency': 'EUR'
     })
-    
+
     authenticated_client.post('/expenses', data={
         'date': '2025-12-12',
         'category': 'Albert Heijn',
@@ -71,16 +70,16 @@ def test_report_balance(authenticated_client):
         'description': 'Albert Heijn',
         'currency': 'EUR'
     })
-    
+
     response = authenticated_client.get('/reports')
-    
+
     assert response.status_code == 200
 
 
 def test_report_spending_breakdown(authenticated_client):
     """Test spending breakdown by category."""
     categories = ['Albert Heijn', 'OVpay', 'De Kroeg Leiden']
-    
+
     for category in categories:
         authenticated_client.post('/expenses', data={
             'date': '2025-12-10',
@@ -89,9 +88,9 @@ def test_report_spending_breakdown(authenticated_client):
             'description': f'{category} expense',
             'currency': 'EUR'
         })
-    
+
     response = authenticated_client.get('/reports')
-    
+
     assert response.status_code == 200
 
 
@@ -104,7 +103,7 @@ def test_report_category_percentages(authenticated_client):
         'description': 'Albert Heijn',
         'currency': 'EUR'
     })
-    
+
     authenticated_client.post('/expenses', data={
         'date': '2025-12-11',
         'category': 'OVpay',
@@ -112,9 +111,9 @@ def test_report_category_percentages(authenticated_client):
         'description': 'OVpay',
         'currency': 'EUR'
     })
-    
+
     response = authenticated_client.get('/reports')
-    
+
     assert response.status_code == 200
 
 
@@ -128,7 +127,7 @@ def test_report_monthly_summary(authenticated_client):
             'description': 'Jumbo Supermarkt',
             'currency': 'EUR'
         })
-        
+
         authenticated_client.post('/expenses', data={
             'date': f'2025-{month}-05',
             'category': 'Albert Heijn',
@@ -136,9 +135,9 @@ def test_report_monthly_summary(authenticated_client):
             'description': 'Albert Heijn',
             'currency': 'EUR'
         })
-    
+
     response = authenticated_client.get('/reports')
-    
+
     assert response.status_code == 200
 
 
@@ -151,7 +150,7 @@ def test_report_with_filters(authenticated_client):
         'description': 'Last month',
         'currency': 'EUR'
     })
-    
+
     authenticated_client.post('/expenses', data={
         'date': '2025-12-10',
         'category': 'Albert Heijn',
@@ -159,16 +158,16 @@ def test_report_with_filters(authenticated_client):
         'description': 'This month',
         'currency': 'EUR'
     })
-    
+
     authenticated_client.post('/set_timeframe/1')
-    
+
     response = authenticated_client.get('/reports')
-    
+
     assert response.status_code == 200
 
 
 def test_report_empty_data(authenticated_client):
     """Test report generation with no transactions."""
     response = authenticated_client.get('/reports')
-    
+
     assert response.status_code == 200

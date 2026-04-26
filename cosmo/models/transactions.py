@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from datetime import date as Date
-from typing import Optional
 
-from sqlalchemy import Date as SADate, ForeignKey, Index, Numeric, String
+from sqlalchemy import Date as SADate
+from sqlalchemy import ForeignKey, Index, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from cosmo.models.base import Base, TimestampMixin
@@ -38,22 +38,22 @@ class Transaction(Base, TimestampMixin):
     original_amount: Mapped[float] = mapped_column(Numeric(18, 4), nullable=False)
     original_currency: Mapped[str] = mapped_column(String(3), nullable=False)
     base_amount: Mapped[float] = mapped_column(Numeric(18, 4), nullable=False)
-    fx_rate_used: Mapped[Optional[float]] = mapped_column(Numeric(18, 8), nullable=True)
+    fx_rate_used: Mapped[float | None] = mapped_column(Numeric(18, 8), nullable=True)
 
-    description: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
-    merchant_normalized: Mapped[Optional[str]] = mapped_column(
+    description: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    merchant_normalized: Mapped[str | None] = mapped_column(
         String(256), nullable=True, index=True
     )
 
-    category_id: Mapped[Optional[int]] = mapped_column(
+    category_id: Mapped[int | None] = mapped_column(
         ForeignKey("categories.id", ondelete="SET NULL"), nullable=True
     )
 
     type: Mapped[str] = mapped_column(String(8), nullable=False)
     # 'income' | 'expense' | 'transfer'
 
-    transfer_pair_id: Mapped[Optional[int]] = mapped_column(
+    transfer_pair_id: Mapped[int | None] = mapped_column(
         ForeignKey("transactions.id", ondelete="SET NULL"), nullable=True
     )
 
-    notes: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(2048), nullable=True)
