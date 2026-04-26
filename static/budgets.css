@@ -1,56 +1,94 @@
-/*
+/* Budgets page layout. Uses tokens defined in base.css. */
 
+.budget-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-6);
+}
 
- body {
-     font-family: 'Segoe UI', Arial, sans-serif;
-     background: #f4f6f8;
-     margin: 0;
- }
+.budget-card .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+}
 
- .navbar {
-     background: #2d3748;
-     color: #fff;
-     padding: 1rem 2rem;
-     display: flex;
-     justify-content: space-between;
-     align-items: center;
- }
+.budget-amounts {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-3);
+    font-variant-numeric: tabular-nums;
+}
 
- .navbar a {
-     color: #fff;
-     text-decoration: none;
-     margin: 0 1rem;
-     font-weight: 500;
- }
+.budget-amounts .card-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
 
- .container {
-     max-width: 600px;
-     margin: 2rem auto;
-     background: #fff;
-     border-radius: 12px;
-     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
-     padding: 2rem;
- }
+.budget-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: var(--sp-2);
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+}
 
- h1 {
-     margin-bottom: 1.5rem;
- }
+.budget-meta .pos {
+    color: var(--c-success);
+}
 
- .budget-section {
-     background: #edf2f7;
-     border-radius: 8px;
-     padding: 1.5rem 2rem;
-     margin-bottom: 1.5rem;
-     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
- }
+.budget-meta .neg {
+    color: var(--c-danger);
+}
 
- .back-link {
-     display: inline-block;
-     margin-top: 1rem;
-     background: #2b6cb0;
-     color: #fff;
-     padding: 0.5rem 1rem;
-     border-radius: 6px;
-     text-decoration: none;
-     font-weight: 500;
- }
+.progress {
+    width: 100%;
+    height: 8px;
+    background: var(--c-surface-2);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: var(--c-success);
+    border-radius: 999px;
+    transition: width 0.25s ease;
+}
+
+.progress-bar.warn {
+    background: var(--c-warning);
+}
+
+.progress-bar.over {
+    background: var(--c-danger);
+}
+
+.budget-form-card {
+    max-width: 720px;
+}
+
+.budget-form-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-4);
+}
+
+.inline-form {
+    display: inline;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+}
+
+@media (max-width: 600px) {
+    .budget-form-row {
+        grid-template-columns: 1fr;
+    }
+}

@@ -3,9 +3,10 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Reports - Cosmo</title>
+    <title>Reports. Cosmo</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='reports.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -17,8 +18,8 @@
             <strong>Cosmo</strong>
         </div>
         <div class="navbar-timeframe">
-            <label for="timeframe" style="margin-right: 8px; font-size: 14px; color: #666;">Timeframe:</label>
-            <select id="timeframe" onchange="changeTimeframe(this.value)" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ddd; background: white; cursor: pointer;">
+            <label for="timeframe" class="navbar-control-label">Timeframe</label>
+            <select id="timeframe" class="navbar-select" onchange="changeTimeframe(this.value)">
                 <option value="1" {% if timeframe_months == 1 %}selected{% endif %}>1 Month</option>
                 <option value="2" {% if timeframe_months == 2 %}selected{% endif %}>2 Months</option>
                 <option value="3" {% if timeframe_months == 3 %}selected{% endif %}>3 Months</option>
@@ -33,9 +34,9 @@
             <a href="{{ url_for('expenses') }}">Expenses</a>
             <a href="{{ url_for('budgets') }}">Budgets</a>
             <a href="{{ url_for('reports') }}" class="active">Reports</a>
-            <a href="{{ url_for('graphs_stats') }}">Graphs & Stats</a>
+            <a href="{{ url_for('graphs_stats') }}">Analytics</a>
             <a href="{{ url_for('revolut_import') }}">Revolut Import</a>
-            <a href="{{ url_for('logout') }}" style="margin-left: auto;">Logout ({{ session.username }})</a>
+            <a href="{{ url_for('logout') }}" class="navbar-logout">Logout ({{ session.username }})</a>
         </div>
     </div>
 
@@ -50,119 +51,125 @@
         <!-- Page Header -->
         <div class="page-header">
             <div>
-                <h1>Financial Reports</h1>
+                <h1>Financial reports</h1>
+                <p class="muted">A summary of income, expenses, and trends across your selected timeframe.</p>
             </div>
         </div>
 
         <!-- Overview Stats -->
-        <div class="stats-grid">
-            <div class="stat-card income">
-                <span class="stat-label">Total Income</span>
-                <span class="stat-value">€{{ "%.2f"|format(total_income) }}</span>
+        <div class="reports-kpi">
+            <div class="card kpi-card">
+                <span class="card-title">Total income</span>
+                <span class="card-value">€{{ "%.2f"|format(total_income) }}</span>
             </div>
-            <div class="stat-card expense">
-                <span class="stat-label">Total Expenses</span>
-                <span class="stat-value">€{{ "%.2f"|format(total_expenses) }}</span>
+            <div class="card kpi-card">
+                <span class="card-title">Total expenses</span>
+                <span class="card-value">€{{ "%.2f"|format(total_expenses) }}</span>
             </div>
-            <div class="stat-card balance">
-                <span class="stat-label">Net Balance</span>
-                <span class="stat-value">€{{ "%.2f"|format(balance) }}</span>
+            <div class="card kpi-card">
+                <span class="card-title">Net balance</span>
+                <span class="card-value">€{{ "%.2f"|format(balance) }}</span>
             </div>
         </div>
 
-        <!-- Expenses by Category -->
+        <!-- Spending breakdown -->
         <div class="card">
-            <h3 style="margin-bottom: 1.5rem;">Spending Breakdown</h3>
-            {% if expense_by_category %}
-                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; align-items: start;">
-                    <div>
-                        <div class="chart-container" style="background: white; padding: 1rem; border-radius: 1rem;">
-                            <canvas id="categoryChart"></canvas>
-                        </div>
+            <div class="card-header">
+                <h3 class="card-title-h">Spending breakdown</h3>
+            </div>
+            <div class="card-body">
+                {% if expense_by_category %}
+                <div class="breakdown-grid">
+                    <div class="chart-frame">
+                        <canvas id="categoryChart"></canvas>
                     </div>
-                    <div>
-                        <div class="chart-legend">
-                            {% for cat in expense_by_category %}
-                            <div class="legend-item">
-                                <div class="legend-color" style="background-color: {{ ['#a855f7', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#ec4899'][loop.index0 % 6] }};"></div>
-                                <div style="flex: 1;">
-                                    <div class="legend-label">{{ cat.category }}</div>
-                                    <div class="legend-value">€{{ "%.2f"|format(cat.amount) }}</div>
-                                </div>
-                            </div>
-                            {% endfor %}
+                    <div class="legend-list">
+                        {% for cat in expense_by_category %}
+                        <div class="legend-row">
+                            <span class="legend-dot" data-color-index="{{ loop.index0 % 6 }}"></span>
+                            <span class="legend-label">{{ cat.category }}</span>
+                            <span class="legend-value">€{{ "%.2f"|format(cat.amount) }}</span>
                         </div>
+                        {% endfor %}
                     </div>
                 </div>
-            {% else %}
-                <div class="empty-state">
-                    <p>No expense data available yet</p>
-                </div>
-            {% endif %}
+                {% else %}
+                <p class="muted">No expense data available yet.</p>
+                {% endif %}
+            </div>
         </div>
 
-        <!-- Monthly Trend -->
+        <!-- Monthly trend -->
         <div class="card">
-            <h3 style="margin-bottom: 1.5rem;">Monthly Trend</h3>
-            {% if monthly_data %}
-                <div class="chart-container" style="background: white; padding: 1rem; border-radius: 1rem;">
+            <div class="card-header">
+                <h3 class="card-title-h">Monthly trend</h3>
+            </div>
+            <div class="card-body">
+                {% if monthly_data %}
+                <div class="chart-frame chart-frame-tall">
                     <canvas id="trendChart"></canvas>
                 </div>
-            {% else %}
-                <div class="empty-state">
-                    <p>Not enough data for trend analysis yet</p>
-                </div>
-            {% endif %}
+                {% else %}
+                <p class="muted">Not enough data for trend analysis yet.</p>
+                {% endif %}
+            </div>
         </div>
 
-        <!-- Recent Transactions -->
+        <!-- Transaction history -->
         <div class="card">
-            <h3 style="margin-bottom: 1.5rem;">Transaction History</h3>
-            {% if recent_transactions %}
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Description</th>
-                                <th>Category</th>
-                                <th>Type</th>
-                                <th>Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for trans in recent_transactions %}
-                            <tr>
-                                <td>{{ trans.date }}</td>
-                                <td>{{ trans.description if trans.description else '-' }}</td>
-                                <td>{{ trans.category }}</td>
-                                <td>
-                                    {% if trans.type == 'income' %}
-                                    <span style="display: inline-block; background: var(--success-light); color: var(--success); padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600;">Income</span>
-                                    {% else %}
-                                    <span style="display: inline-block; background: var(--danger-light); color: var(--danger); padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600;">Expense</span>
-                                    {% endif %}
-                                </td>
-                                <td class="{% if trans.type == 'income' %}positive{% else %}negative{% endif %}">
-                                    {% if trans.type == 'income' %}+{% else %}-{% endif %}€{{ "%.2f"|format(trans.amount) }}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <div class="empty-state">
-                    <p>No transactions recorded yet</p>
-                </div>
-            {% endif %}
+            <div class="card-header">
+                <h3 class="card-title-h">Transaction history</h3>
+            </div>
+            <div class="card-body">
+                {% if recent_transactions %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Type</th>
+                            <th class="text-right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for trans in recent_transactions %}
+                        <tr>
+                            <td>{{ trans.date }}</td>
+                            <td>{{ trans.description if trans.description else '.' }}</td>
+                            <td><span class="badge badge-neutral">{{ trans.category }}</span></td>
+                            <td>
+                                {% if trans.type == 'income' %}
+                                <span class="badge badge-success">Income</span>
+                                {% else %}
+                                <span class="badge badge-danger">Expense</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-right">
+                                {% if trans.type == 'income' %}+{% else %}-{% endif %}€{{ "%.2f"|format(trans.amount) }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="muted">No transactions recorded yet.</p>
+                {% endif %}
+            </div>
         </div>
 
-        <a class="back-link" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+        <a class="back-link" href="{{ url_for('dashboard') }}">Back to dashboard</a>
     </div>
 
     <script>
-        // Pie chart for expenses by category
+        const palette = ['#2563eb', '#0891b2', '#059669', '#d97706', '#dc2626', '#7c3aed', '#db2777', '#475569'];
+
+        // Apply legend dot colors via JS so HTML stays clean.
+        document.querySelectorAll('.legend-dot').forEach(function (el) {
+            const idx = parseInt(el.dataset.colorIndex, 10) || 0;
+            el.style.background = palette[idx % palette.length];
+        });
+
         {% if expense_by_category %}
         const categoryCtx = document.getElementById('categoryChart').getContext('2d');
         new Chart(categoryCtx, {
@@ -171,40 +178,21 @@
                 labels: {{ category_labels|tojson }},
                 datasets: [{
                     data: {{ category_values|tojson }},
-                    backgroundColor: [
-                        '#a855f7',
-                        '#ef4444',
-                        '#f59e0b',
-                        '#10b981',
-                        '#3b82f6',
-                        '#ec4899',
-                        '#06b6d4',
-                        '#8b5cf6'
-                    ],
-                    borderColor: '#fff',
+                    backgroundColor: palette,
+                    borderColor: '#ffffff',
                     borderWidth: 2
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 15,
-                            font: {
-                                size: 12
-                            }
-                        }
-                    }
+                    legend: { display: false }
                 }
             }
         });
         {% endif %}
 
-        // Line chart for monthly trends
         {% if monthly_data %}
         const trendCtx = document.getElementById('trendChart').getContext('2d');
         new Chart(trendCtx, {
@@ -215,56 +203,43 @@
                     {
                         label: 'Income',
                         data: {{ income_trend|tojson }},
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        tension: 0.4,
+                        borderColor: '#059669',
+                        backgroundColor: 'rgba(5, 150, 105, 0.08)',
+                        tension: 0.35,
                         fill: true,
-                        pointRadius: 4,
-                        pointBackgroundColor: '#10b981',
+                        pointRadius: 3,
+                        pointBackgroundColor: '#059669',
                         pointBorderColor: '#fff',
-                        pointBorderWidth: 2
+                        pointBorderWidth: 1.5,
+                        borderWidth: 2
                     },
                     {
                         label: 'Expenses',
                         data: {{ expense_trend|tojson }},
-                        borderColor: '#ef4444',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        tension: 0.4,
+                        borderColor: '#dc2626',
+                        backgroundColor: 'rgba(220, 38, 38, 0.08)',
+                        tension: 0.35,
                         fill: true,
-                        pointRadius: 4,
-                        pointBackgroundColor: '#ef4444',
+                        pointRadius: 3,
+                        pointBackgroundColor: '#dc2626',
                         pointBorderColor: '#fff',
-                        pointBorderWidth: 2
+                        pointBorderWidth: 1.5,
+                        borderWidth: 2
                     }
                 ]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: {
                         position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 15,
-                            font: {
-                                size: 12
-                            }
-                        }
+                        labels: { usePointStyle: true, padding: 15, font: { size: 12 } }
                     }
                 },
                 scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)'
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false
-                        }
-                    }
+                    y: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
+                    x: { grid: { display: false } }
                 }
             }
         });

@@ -1,56 +1,113 @@
-/*
+/* Reports page layout. Composition only. Foundation in base.css. */
 
+/* Reuse the same navbar control styles used on the dashboard. */
+.navbar-control-label {
+    font-size: 12px;
+    color: var(--c-text-muted);
+    margin: 0 6px 0 0;
+    letter-spacing: 0.02em;
+}
 
-body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background: #f4f6f8;
-            margin: 0;
-        }
+.navbar-select {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border-strong);
+    border-radius: var(--r-sm);
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--c-text);
+    cursor: pointer;
+}
 
-        .navbar {
-            background: #2d3748;
-            color: #fff;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+.navbar-select:focus { outline: none; border-color: var(--c-brand); }
 
-        .navbar a {
-            color: #fff;
-            text-decoration: none;
-            margin: 0 1rem;
-            font-weight: 500;
-        }
+.navbar-logout { margin-left: auto; }
 
-        .container {
-            max-width: 800px;
-            margin: 2rem auto;
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
-            padding: 2rem;
-        }
+/* KPI row at top of reports */
+.reports-kpi {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-5);
+}
 
-        h1 {
-            margin-bottom: 1.5rem;
-        }
+.reports-kpi .kpi-card { padding: var(--sp-4) var(--sp-5); }
 
-        .report-section {
-            background: #edf2f7;
-            border-radius: 8px;
-            padding: 1.5rem 2rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-        }
+.reports-kpi .card-title {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--c-text-subtle);
+    margin-bottom: var(--sp-2);
+}
 
-        .back-link {
-            display: inline-block;
-            margin-top: 1rem;
-            background: #2b6cb0;
-            color: #fff;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 500;
-        }
+.reports-kpi .card-value {
+    display: block;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--c-text);
+    letter-spacing: -0.01em;
+}
+
+@media (max-width: 768px) {
+    .reports-kpi { grid-template-columns: 1fr; }
+}
+
+/* Breakdown layout: chart on left, legend list on right */
+.breakdown-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: var(--sp-5);
+    align-items: start;
+}
+
+@media (max-width: 1024px) {
+    .breakdown-grid { grid-template-columns: 1fr; }
+}
+
+.chart-frame {
+    position: relative;
+    height: 280px;
+}
+
+.chart-frame-tall { height: 340px; }
+
+/* Legend */
+.legend-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+}
+
+.legend-row {
+    display: grid;
+    grid-template-columns: 12px 1fr auto;
+    gap: var(--sp-3);
+    align-items: center;
+    padding: var(--sp-2) 0;
+    border-bottom: 1px solid var(--c-border);
+    font-size: 13px;
+}
+
+.legend-row:last-child { border-bottom: none; }
+
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.legend-label { color: var(--c-text); }
+
+.legend-value { color: var(--c-text-muted); font-variant-numeric: tabular-nums; }
+
+/* Card title helper */
+.card-title-h {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--c-text);
+    margin: 0;
+}
+
+.text-right { text-align: right; }

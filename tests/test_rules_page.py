@@ -6,7 +6,7 @@ from __future__ import annotations
 def test_rules_page_loads_empty(authenticated_client):
     response = authenticated_client.get('/rules')
     assert response.status_code == 200
-    assert b'No merchant rules yet' in response.data
+    assert b'No rules yet' in response.data
 
 
 def test_rules_page_shows_learned_rule(authenticated_client):
