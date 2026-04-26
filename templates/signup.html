@@ -2,103 +2,52 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sign Up - Cosmo</title>
+    <title>Create your Cosmo account</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
-    <style>
-        .auth-container {
-            max-width: 400px;
-            margin: 5rem auto;
-            padding: 2rem;
-            background: var(--card-bg);
-            border-radius: 12px;
-            box-shadow: 0 4px 16px var(--shadow-md);
-        }
-        .auth-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        .auth-header h1 {
-            margin-bottom: 0.5rem;
-            color: var(--primary);
-        }
-        .auth-header p {
-            color: var(--gray-400);
-        }
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid var(--border-light);
-            border-radius: 8px;
-            font-size: 1rem;
-        }
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-        .btn-full {
-            width: 100%;
-            padding: 0.875rem;
-            font-size: 1rem;
-            margin-top: 0.5rem;
-        }
-        .auth-footer {
-            text-align: center;
-            margin-top: 1.5rem;
-            color: var(--gray-400);
-        }
-        .auth-footer a {
-            color: var(--primary);
-            text-decoration: none;
-            font-weight: 500;
-        }
-        .auth-footer a:hover {
-            text-decoration: underline;
-        }
-    </style>
 </head>
 <body>
-    <div class="auth-container">
-        <div class="auth-header">
-            <h1>Create Account</h1>
-        </div>
+    <div class="auth-shell">
+        <div class="auth-card">
+            <div class="auth-brand">
+                <div class="navbar-avatar">C</div>
+                <span>Cosmo</span>
+            </div>
 
-        {% with messages = get_flashed_messages() %}
-          {% if messages %}
-            <div class="flash-messages">
-            {% for message in messages %}
-              <div class="alert alert-success">{{ message }}</div>
-            {% endfor %}
-            </div>
-          {% endif %}
-        {% endwith %}
+            <h1 class="auth-title">Create your Cosmo account</h1>
+            <p class="auth-subtitle">Track income, expenses, and budgets across currencies.</p>
 
-        <form method="post">
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required autofocus minlength="3">
-            </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required minlength="4">
-            </div>
-            <div class="form-group">
-                <label for="confirm_password">Confirm Password</label>
-                <input type="password" id="confirm_password" name="confirm_password" required minlength="4">
-            </div>
-            <button type="submit" class="btn btn-full">Sign Up</button>
-        </form>
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                <div class="flash-messages">
+                {% for message in messages %}
+                  <div class="alert alert-info">{{ message }}</div>
+                {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
 
-        <div class="auth-footer">
-            Already have an account? <a href="{{ url_for('login') }}">Login</a>
+            <form method="post" novalidate>
+                <div class="field">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" autocomplete="username" required autofocus minlength="3">
+                    <div class="help">At least 3 characters.</div>
+                </div>
+                <div class="field">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" autocomplete="new-password" required minlength="4">
+                    <div class="help">At least 4 characters.</div>
+                </div>
+                <div class="field">
+                    <label for="confirm_password">Confirm password</label>
+                    <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" required minlength="4">
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">Create account</button>
+            </form>
+
+            <div class="auth-footer">
+                Already have an account? <a href="{{ url_for('login') }}">Sign in.</a>
+            </div>
         </div>
     </div>
 </body>
