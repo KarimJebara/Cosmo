@@ -90,7 +90,7 @@ class _BudgetView:
 
 
 def _isoformat(value: Any) -> str:
-    if isinstance(value, (_date, datetime)):
+    if isinstance(value, _date | datetime):
         return value.strftime("%Y-%m-%d")
     return str(value or "")
 
