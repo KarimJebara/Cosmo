@@ -2,80 +2,89 @@ import pytest
 from datetime import datetime, timedelta
 from app import linear_regression, predict_value, filter_by_timeframe
 
+
+def _today() -> datetime:
+    return datetime.now()
+
+
+def _days_ago(n: int) -> str:
+    return (_today() - timedelta(days=n)).strftime('%Y-%m-%d')
+
+
 def test_filter_by_timeframe_1_month(app):
     with app.test_request_context():
         from flask import session
         session['timeframe_months'] = 1
-        
+
         items = [
-            type('Item', (), {'date': '2025-12-10'}),
-            type('Item', (), {'date': '2025-12-08'}),
-            type('Item', (), {'date': '2025-11-01'})
+            type('Item', (), {'date': _days_ago(2)}),
+            type('Item', (), {'date': _days_ago(10)}),
+            type('Item', (), {'date': _days_ago(60)}),
         ]
-        
+
         result = filter_by_timeframe(items)
-        
+
         assert len(result) >= 1
 
 def test_filter_by_timeframe_3_months(app):
     with app.test_request_context():
         from flask import session
         session['timeframe_months'] = 3
-        
+
         items = [
-            type('Item', (), {'date': '2025-12-10'}),
-            type('Item', (), {'date': '2025-12-08'}),
-            type('Item', (), {'date': '2025-11-01'}),
-            type('Item', (), {'date': '2025-11-01'}),
-            type('Item', (), {'date': '2025-10-01'})
+            type('Item', (), {'date': _days_ago(2)}),
+            type('Item', (), {'date': _days_ago(10)}),
+            type('Item', (), {'date': _days_ago(40)}),
+            type('Item', (), {'date': _days_ago(50)}),
+            type('Item', (), {'date': _days_ago(180)}),
         ]
-        
+
         result = filter_by_timeframe(items)
-        
+
         assert len(result) >= 3
 
 def test_filter_by_timeframe_6_months(app):
     with app.test_request_context():
         from flask import session
         session['timeframe_months'] = 6
-        
+
         items = [
-            type('Item', (), {'date': '2025-12-10'}),
-            type('Item', (), {'date': '2025-06-01'}),
-            type('Item', (), {'date': '2025-01-01'})
+            type('Item', (), {'date': _days_ago(5)}),
+            type('Item', (), {'date': _days_ago(120)}),
+            type('Item', (), {'date': _days_ago(400)}),
         ]
-        
+
         result = filter_by_timeframe(items)
-        
+
         assert len(result) >= 1
 
 def test_filter_by_timeframe_12_months(app):
     with app.test_request_context():
         from flask import session
         session['timeframe_months'] = 12
-        
+
         items = [
-            type('Item', (), {'date': '2025-12-10'}),
-            type('Item', (), {'date': '2025-01-01'}),
-            type('Item', (), {'date': '2023-12-01'})
+            type('Item', (), {'date': _days_ago(5)}),
+            type('Item', (), {'date': _days_ago(200)}),
+            type('Item', (), {'date': _days_ago(900)}),
         ]
-        
+
         result = filter_by_timeframe(items)
-        
+
         assert len(result) >= 2
 
 def test_filter_by_timeframe_invalid_dates(app):
     with app.test_request_context():
         from flask import session
         session['timeframe_months'] = 12
-        
+
         items = [
             type('Item', (), {'date': 'invalid-date'}),
-            type('Item', (), {'date': '2025-12-10'})
+            type('Item', (), {'date': _days_ago(5)}),
         ]
-        
+
         result = filter_by_timeframe(items)
-        
+
         assert len(result) >= 1
 
 def test_filter_by_timeframe_empty_list(app):
