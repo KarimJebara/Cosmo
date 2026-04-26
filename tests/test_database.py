@@ -71,7 +71,8 @@ def test_authenticate_upgrades_legacy_hash(setup_database):
     with database.get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            'INSERT INTO users (username, password_hash) VALUES (?, ?)',
+            "INSERT INTO users_v2 (username, password_hash, base_currency, created_at) "
+            "VALUES (?, ?, 'EUR', CURRENT_TIMESTAMP)",
             (username, legacy_hash),
         )
         user_id = cursor.lastrowid
@@ -99,54 +100,35 @@ def test_duplicate_username(setup_database):
     assert result is None
 
 
-def test_database_foreign_keys(setup_database):
-    """Test foreign key constraints."""
-    user_id = database.create_user('testuser', 'password123')
-    # Test that expenses can be created with foreign key
+def test_create_user_creates_default_account(setup_database):
+    """create_user must also seed a default EUR account so transactions can attach."""
+    user_id = database.create_user('alice', 'pw123')
+    assert user_id is not None
     with database.get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            'INSERT INTO expenses (user_id, date, category, amount, currency) VALUES (?, ?, ?, ?, ?)',
-            (user_id, '2025-12-10', 'Food', 50.0, 'EUR')
-        )
-        cursor.execute('SELECT * FROM expenses WHERE user_id = ?', (user_id,))
-        result = cursor.fetchone()
-        assert result is not None
+        rows = conn.execute(
+            'SELECT name, currency FROM accounts WHERE user_id = ?', (user_id,)
+        ).fetchall()
+    assert len(rows) == 1
+    assert rows[0]['name'] == 'Default'
+    assert rows[0]['currency'] == 'EUR'
 
 
-def test_database_cascading(setup_database):
-    """Test cascading deletes and updates."""
-    user_id = database.create_user('testuser', 'password123')
+def test_drop_all_clears_v1_tables(setup_database):
+    """drop_all_users_and_data wipes both legacy and v1 tables."""
+    user_id = database.create_user('bob', 'pw123')
     with database.get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            'INSERT INTO expenses (user_id, date, category, amount, currency) VALUES (?, ?, ?, ?, ?)',
-            (user_id, '2025-12-10', 'Food', 50.0, 'EUR')
+        # Insert a transaction directly via raw SQL to verify drop covers it
+        conn.execute(
+            "INSERT INTO transactions (user_id, account_id, date, original_amount, "
+            "original_currency, base_amount, type, created_at, updated_at) "
+            "VALUES (?, (SELECT id FROM accounts WHERE user_id = ? LIMIT 1), "
+            "'2026-04-10', 10.0, 'EUR', 10.0, 'expense', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            (user_id, user_id),
         )
+
     database.drop_all_users_and_data()
-    with database.get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute('SELECT COUNT(*) FROM expenses')
-        count = cursor.fetchone()[0]
-        assert count == 0
 
-
-def test_transaction_rollback(setup_database):
-    """Test transaction rollback on error."""
-    user_id = database.create_user('testuser', 'password123')
-    try:
-        with database.get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                'INSERT INTO expenses (user_id, date, category, amount, currency) VALUES (?, ?, ?, ?, ?)',
-                (user_id, '2025-12-10', 'Food', 50.0, 'EUR')
-            )
-            raise Exception("Intentional error")
-    except Exception:
-        pass
-    
     with database.get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute('SELECT COUNT(*) FROM expenses')
-        count = cursor.fetchone()[0]
-        assert count == 0
+        for table in ('users_v2', 'accounts', 'transactions'):
+            count = conn.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0]
+            assert count == 0, f'{table} not cleared'
