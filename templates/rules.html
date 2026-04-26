@@ -43,6 +43,7 @@
         </div>
         <div class="navbar-nav">
             <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('accounts') }}">Accounts</a>
             <a href="{{ url_for('income') }}">Income</a>
             <a href="{{ url_for('expenses') }}">Expenses</a>
             <a href="{{ url_for('budgets') }}">Budgets</a>
@@ -50,7 +51,7 @@
             <a href="{{ url_for('graphs_stats') }}">Analytics</a>
             <a href="{{ url_for('rules') }}" class="active">Rules</a>
             <a href="{{ url_for('revolut_import') }}">Import</a>
-            <a href="{{ url_for('logout') }}" style="margin-left: auto;">Logout ({{ session.username }})</a>
+            <a href="{{ url_for('logout') }}" class="navbar-logout">Logout</a>
         </div>
     </div>
 

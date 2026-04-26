@@ -51,6 +51,7 @@
         </div>
         <div class="navbar-nav">
             <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('accounts') }}" class="active">Accounts</a>
             <a href="{{ url_for('income') }}">Income</a>
             <a href="{{ url_for('expenses') }}">Expenses</a>
             <a href="{{ url_for('budgets') }}">Budgets</a>
@@ -58,7 +59,7 @@
             <a href="{{ url_for('graphs_stats') }}">Analytics</a>
             <a href="{{ url_for('rules') }}">Rules</a>
             <a href="{{ url_for('revolut_import') }}">Import</a>
-            <a href="{{ url_for('logout') }}">Logout</a>
+            <a href="{{ url_for('logout') }}" class="navbar-logout">Logout</a>
         </div>
     </nav>
 
@@ -99,7 +100,7 @@
                             {% endif %}
                         </div>
                         <div class="card-footer">
-                            <span>{{ acc.transaction_count }} transactions</span>
+                            <span>{{ acc.transaction_count }} transaction{% if acc.transaction_count != 1 %}s{% endif %}</span>
                             {% if not acc.archived %}
                                 <form method="POST" action="{{ url_for('archive_account', account_id=acc.id) }}" class="inline-form"
                                       onsubmit="return confirm('Archive this account? Its transactions remain.');">
