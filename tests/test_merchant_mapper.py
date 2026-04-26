@@ -76,15 +76,20 @@ def test_save_merchant_categories_income(cleanup_merchant_files):
         saved_data = json.load(f)
     assert saved_data == test_data
 
-def test_save_merchant_categories_creates_directory(cleanup_merchant_files):
-    if os.path.exists('data'):
-        import shutil
-        shutil.rmtree('data')
-    
-    test_data = {"Test": "Category"}
-    save_merchant_categories(test_data, 'expenses')
-    
-    assert os.path.exists(os.path.dirname(MERCHANT_CATEGORY_FILE_EXPENSES))
+def test_save_merchant_categories_creates_directory(cleanup_merchant_files, tmp_path, monkeypatch):
+    """Ensure save_merchant_categories creates its parent dir if missing.
+
+    Uses tmp_path so we don't blow away the real ./data/ directory (which
+    contains budget_tracker.db and breaks every subsequent test).
+    """
+    target = tmp_path / "merchants" / "expenses.json"
+    monkeypatch.setattr(
+        "merchant_mapper.MERCHANT_CATEGORY_FILE_EXPENSES", str(target)
+    )
+
+    save_merchant_categories({"Test": "Category"}, 'expenses')
+
+    assert target.exists()
 
 def test_update_merchant_category_new_merchant(cleanup_merchant_files):
     update_merchant_category("New Store", "Shopping", 'expenses')

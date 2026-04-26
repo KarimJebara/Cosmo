@@ -139,9 +139,18 @@ def test_delete_budget_valid_id(authenticated_client):
         'category': 'Albert Heijn',
         'limit': '500.00'
     })
-    
-    response = authenticated_client.post('/delete_budget/0', follow_redirects=True)
-    
+
+    # Look up the real budget id; the v1 schema uses DB-assigned IDs.
+    import database
+    with database.get_db() as conn:
+        row = conn.execute(
+            "SELECT id FROM budgets_v2 ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    assert row is not None
+    budget_id = row['id']
+
+    response = authenticated_client.post(f'/delete_budget/{budget_id}', follow_redirects=True)
+
     assert b'Budget deleted successfully' in response.data
 
 def test_delete_budget_invalid_id(authenticated_client):

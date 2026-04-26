@@ -1,51 +1,38 @@
-import pytest
-import sys
 import os
+import sys
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app import app as flask_app
-from models.data_manager import DataManager
-import database
+import database  # noqa: E402
+from app import app as flask_app  # noqa: E402
 
 
 @pytest.fixture(scope="session", autouse=True)
 def reset_test_data_on_startup():
-    print("\n" + "=" * 60)
-    print("INITIALIZING TEST ENVIRONMENT")
-    print("=" * 60)
-    
+    """Run alembic upgrade once and clear all tables before/after the session."""
     database.init_db()
-    print("[OK] Database initialized")
-    
     database.drop_all_users_and_data()
-    print("[OK] All database data cleared")
+
     merchant_files = [
         'data/merchant_category_expenses.json',
-        'data/merchant_category_income.json'
+        'data/merchant_category_income.json',
     ]
-    
     for filepath in merchant_files:
         if os.path.exists(filepath):
             try:
                 os.remove(filepath)
-                print(f"[OK] Removed: {filepath}")
-            except Exception as e:
-                print(f"[ERROR] Error removing {filepath}: {e}")
-    
-    print("=" * 60)
-    print()
+            except OSError:
+                pass
+
     yield
-    print("\n" + "=" * 60)
-    print("CLEANING UP TEST DATA")
-    print("=" * 60)
+
     try:
         database.drop_all_users_and_data()
-        print("[OK] Test data cleanup complete")
-    except Exception as e:
-        print(f"[ERROR] Error during cleanup: {e}")
-    print("=" * 60)
+    except Exception:
+        pass
 
 
 @pytest.fixture
@@ -64,23 +51,20 @@ def runner(app):
 
 @pytest.fixture
 def init_database():
-    database.init_db()
+    """Per-test isolation: clear before and after."""
+    database.drop_all_users_and_data()
     yield
     database.drop_all_users_and_data()
+
 
 @pytest.fixture
 def authenticated_client(client, init_database):
     client.post('/signup', data={
         'username': 'testuser',
         'password': 'testpass',
-        'confirm_password': 'testpass'
+        'confirm_password': 'testpass',
     })
     yield client
-    
-@pytest.fixture
-def data_manager():
-    dm = DataManager()
-    yield dm
 
 @pytest.fixture
 def sample_income():

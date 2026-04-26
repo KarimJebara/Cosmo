@@ -10,13 +10,13 @@ from flask import Flask, flash, redirect, render_template, request, session, url
 
 import database
 from api.revolut_importer import RevolutImporter
+from cosmo import legacy_adapter
 from currency_converter import convert_to_eur, format_amount_with_conversion
 from merchant_mapper import (
     auto_categorize_transaction,
     ensure_merchant_files_exist,
     update_merchant_category,
 )
-from models.data_manager import DataManager
 
 # Configure logging once at app import. Level overridable via LOG_LEVEL env var.
 logging.basicConfig(
@@ -48,9 +48,6 @@ def jinja_format_with_conversion(amount, currency):
     """Format amount with currency conversion"""
     return format_amount_with_conversion(amount, currency)
 
-data_manager = DataManager()
-
-
 def linear_regression(x_values, y_values):
     """Simple linear regression using least squares method"""
     if len(x_values) < 2 or len(y_values) < 2:
@@ -72,17 +69,19 @@ def linear_regression(x_values, y_values):
     return slope, intercept
 
 def login_required(f):
-    """Decorator to require login for routes"""
+    """Decorator to require login for routes."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             flash('Please log in to access this page.')
             return redirect(url_for('login'))
-        # Load user data for the current session
-        if data_manager.user_id != session['user_id']:
-            data_manager.set_user(session['user_id'])
         return f(*args, **kwargs)
     return decorated_function
+
+
+def _current_user_id() -> int:
+    """Helper for route handlers — assumes login_required already ran."""
+    return session['user_id']
 
 
 @app.route('/')
@@ -107,7 +106,7 @@ def login():
             session['user_id'] = user_id
             session['username'] = username
             session['currency'] = session.get('currency', 'EUR')
-            data_manager.set_user(user_id)
+            legacy_adapter.ensure_default_account(user_id)
             flash(f'Welcome back, {username}!')
             return redirect(url_for('dashboard'))
         else:
@@ -144,7 +143,6 @@ def signup():
         if user_id:
             session['user_id'] = user_id
             session['username'] = username
-            data_manager.set_user(user_id)
             flash(f'Account created successfully! Welcome, {username}!')
             return redirect(url_for('dashboard'))
         else:
@@ -211,9 +209,10 @@ def dashboard():
         timeframe_months = session.get('timeframe_months', 12)
         
         # Get all data and filter by timeframe
-        all_incomes = data_manager.get_incomes()
-        all_expenses = data_manager.get_expenses()
-        
+        uid = _current_user_id()
+        all_incomes = legacy_adapter.get_incomes(uid)
+        all_expenses = legacy_adapter.get_expenses(uid)
+
         incomes = filter_by_timeframe(all_incomes)
         expenses = filter_by_timeframe(all_expenses)
 
@@ -380,22 +379,25 @@ def income():
         auto_category = auto_categorize_transaction(description, transaction_type='income')
         category = auto_category if auto_category else user_category
 
-        income_entry = {
-            'date': date,
-            'description': description,
-            'category': category,
-            'amount': amount,
-            'currency': currency
-        }
-
-        data_manager._incomes.append(type('Income', (), income_entry)())
-        data_manager.save()
+        try:
+            legacy_adapter.add_transaction(
+                _current_user_id(),
+                type='income',
+                date=date,
+                description=description,
+                category=category,
+                amount=amount,
+                currency=currency,
+            )
+        except ValueError:
+            flash('Invalid date format — use YYYY-MM-DD.')
+            return redirect(url_for('income'))
 
         flash('Income added successfully!')
         return redirect(url_for('income'))
 
     timeframe_months = session.get('timeframe_months', 12)
-    all_incomes = data_manager.get_incomes()
+    all_incomes = legacy_adapter.get_incomes(_current_user_id())
     incomes = filter_by_timeframe(all_incomes)
     # Sort by date descending (most recent first)
     incomes = sorted(incomes, key=lambda x: x.date, reverse=True)
@@ -428,22 +430,25 @@ def expenses():
         auto_category = auto_categorize_transaction(description, transaction_type='expenses')
         category = auto_category if auto_category else user_category
 
-        expense_entry = {
-            'date': date,
-            'description': description,
-            'category': category,
-            'amount': amount,
-            'currency': currency
-        }
-
-        data_manager._expenses.append(type('Expense', (), expense_entry)())
-        data_manager.save()
+        try:
+            legacy_adapter.add_transaction(
+                _current_user_id(),
+                type='expense',
+                date=date,
+                description=description,
+                category=category,
+                amount=amount,
+                currency=currency,
+            )
+        except ValueError:
+            flash('Invalid date format — use YYYY-MM-DD.')
+            return redirect(url_for('expenses'))
 
         flash('Expense added successfully!')
         return redirect(url_for('expenses'))
 
     timeframe_months = session.get('timeframe_months', 12)
-    all_expenses = data_manager.get_expenses()
+    all_expenses = legacy_adapter.get_expenses(_current_user_id())
     expenses = filter_by_timeframe(all_expenses)
     # Sort by date descending (most recent first)
     expenses = sorted(expenses, key=lambda x: x.date, reverse=True)
@@ -469,51 +474,55 @@ def revolut_import():
             try:
                 csv_content = file.stream.read().decode('utf-8')
                 transactions = RevolutImporter.parse_csv(csv_content)
-                
+
+                uid = _current_user_id()
                 imported_count = 0
                 skipped_count = 0
-                
+
+                # Pull existing transactions once for dedup, not per-row.
+                existing_incomes = legacy_adapter.get_incomes(uid)
+                existing_expenses = legacy_adapter.get_expenses(uid)
+
                 for t in transactions:
                     is_income = t.amount >= 0
-                    transaction_type = 'income' if is_income else 'expenses'
-                    # Look up category from merchant mappings
-                    category = auto_categorize_transaction(t.description, transaction_type=transaction_type)
-                    
-                    # If no category found in mappings, default to "Other"
-                    if not category:
-                        category = "Other"
+                    tx_type = 'income' if is_income else 'expense'
+                    legacy_type = 'income' if is_income else 'expenses'
 
-                    record_to_add = {
-                        'date': t.date.strftime('%Y-%m-%d'),
-                        'description': t.description,
-                        'category': category,
-                        'amount': abs(t.amount),
-                        'currency': t.currency
-                    }
+                    category = auto_categorize_transaction(
+                        t.description, transaction_type=legacy_type
+                    ) or "Other"
 
-                    # Use a more robust duplicate check based on original description
-                    is_duplicate = False
-                    target_list = data_manager.get_incomes() if is_income else data_manager.get_expenses()
-                    for existing_record in target_list:
-                        if (getattr(existing_record, 'date') == record_to_add['date'] and
-                            getattr(existing_record, 'description', None) == record_to_add['description'] and
-                            float(getattr(existing_record, 'amount')) == float(record_to_add['amount'])):
-                            is_duplicate = True
-                            break
+                    record_date = t.date.strftime('%Y-%m-%d')
+                    # Income preserves sign; expense stores absolute amount.
+                    record_amount = t.amount if is_income else abs(t.amount)
+                    target_list = existing_incomes if is_income else existing_expenses
+
+                    is_duplicate = any(
+                        existing.date == record_date
+                        and existing.description == t.description
+                        and abs(float(existing.amount) - float(abs(record_amount))) < 0.01
+                        for existing in target_list
+                    )
 
                     if not is_duplicate:
-                        if is_income:
-                            # Adjust amount for income
-                            record_to_add['amount'] = t.amount
-                            data_manager._incomes.append(type('Income', (), record_to_add))
-                        else:
-                            data_manager._expenses.append(type('Expense', (), record_to_add))
+                        legacy_adapter.add_transaction(
+                            uid,
+                            type=tx_type,
+                            date=record_date,
+                            description=t.description,
+                            category=category,
+                            amount=abs(record_amount),
+                            currency=t.currency,
+                        )
                         imported_count += 1
                     else:
                         skipped_count += 1
 
-                data_manager.save()
-                flash(f'Successfully imported {imported_count} Revolut transactions! Skipped {skipped_count} duplicate transactions.', 'success')
+                flash(
+                    f'Successfully imported {imported_count} Revolut transactions! '
+                    f'Skipped {skipped_count} duplicate transactions.',
+                    'success',
+                )
                 return redirect(url_for('dashboard'))
             except Exception as e:
                 flash(f'Error importing transactions: {e}', 'error')
@@ -530,23 +539,11 @@ def revolut_import():
 @login_required
 def delete_income(date_str, amount, desc):
     try:
-        # Find the income by matching date, description, and amount
-        target_income = None
-        for inc in data_manager._incomes:
-            inc_date = getattr(inc, 'date', '')
-            inc_desc = getattr(inc, 'description', '')
-            inc_amount = float(getattr(inc, 'amount', 0))
-            
-            if inc_date == date_str and inc_desc == desc and abs(inc_amount - amount) < 0.01:
-                target_income = inc
-                break
-        
-        if target_income:
-            data_manager._incomes.remove(target_income)
-            data_manager.save()
-            flash('Income deleted successfully!')
-        else:
-            flash('Income not found!')
+        deleted = legacy_adapter.delete_transaction_by_natural_key(
+            _current_user_id(),
+            type='income', date=date_str, amount=amount, description=desc,
+        )
+        flash('Income deleted successfully!' if deleted else 'Income not found!')
     except Exception as e:
         flash(f'Error deleting income: {str(e)}')
     return redirect(url_for('income'))
@@ -560,40 +557,17 @@ def change_income_category(date_str, amount, desc):
         if not new_category:
             flash('Please select a category!')
             return redirect(url_for('income'))
-        
-        # Find the income by matching date, description, and amount
-        # This avoids index mismatch issues with filtered/sorted lists
-        target_income = None
-        for inc in data_manager._incomes:
-            inc_date = getattr(inc, 'date', '')
-            inc_desc = getattr(inc, 'description', '')
-            inc_amount = float(getattr(inc, 'amount', 0))
-            
-            if inc_date == date_str and inc_desc == desc and abs(inc_amount - amount) < 0.01:
-                target_income = inc
-                break
-        
-        if not target_income:
+
+        updated_count, merchant = legacy_adapter.change_category_by_natural_key(
+            _current_user_id(),
+            type='income', date=date_str, amount=amount, description=desc,
+            new_category=new_category,
+        )
+        if merchant is None:
             flash('Income not found!')
             return redirect(url_for('income'))
-        
-        merchant = getattr(target_income, 'description', None)
-        
-        # Update this income
-        target_income.category = new_category
-        
-        # Update all incomes with the same merchant/description
-        updated_count = 0
-        for inc in data_manager._incomes:
-            if getattr(inc, 'description', None) == merchant:
-                inc.category = new_category
-                updated_count += 1
-        
-        data_manager.save()
-        
-        # Save merchant-category mapping for auto-categorization of future transactions
+
         update_merchant_category(merchant, new_category, transaction_type='income')
-        
         flash(f'Category updated to "{new_category}" for {updated_count} transaction(s) from the same merchant!')
     except Exception as e:
         flash(f'Error updating category: {str(e)}')
@@ -604,23 +578,11 @@ def change_income_category(date_str, amount, desc):
 @login_required
 def delete_expense(date_str, amount, desc):
     try:
-        # Find the expense by matching date, description, and amount
-        target_expense = None
-        for exp in data_manager._expenses:
-            exp_date = getattr(exp, 'date', '')
-            exp_desc = getattr(exp, 'description', '')
-            exp_amount = float(getattr(exp, 'amount', 0))
-            
-            if exp_date == date_str and exp_desc == desc and abs(exp_amount - amount) < 0.01:
-                target_expense = exp
-                break
-        
-        if target_expense:
-            data_manager._expenses.remove(target_expense)
-            data_manager.save()
-            flash('Expense deleted successfully!')
-        else:
-            flash('Expense not found!')
+        deleted = legacy_adapter.delete_transaction_by_natural_key(
+            _current_user_id(),
+            type='expense', date=date_str, amount=amount, description=desc,
+        )
+        flash('Expense deleted successfully!' if deleted else 'Expense not found!')
     except Exception as e:
         flash(f'Error deleting expense: {str(e)}')
     return redirect(url_for('expenses'))
@@ -634,40 +596,17 @@ def change_expense_category(date_str, amount, desc):
         if not new_category:
             flash('Please select a category!')
             return redirect(url_for('expenses'))
-        
-        # Find the expense by matching date, description, and amount
-        # This avoids index mismatch issues with filtered/sorted lists
-        target_expense = None
-        for exp in data_manager._expenses:
-            exp_date = getattr(exp, 'date', '')
-            exp_desc = getattr(exp, 'description', '')
-            exp_amount = float(getattr(exp, 'amount', 0))
-            
-            if exp_date == date_str and exp_desc == desc and abs(exp_amount - amount) < 0.01:
-                target_expense = exp
-                break
-        
-        if not target_expense:
+
+        updated_count, merchant = legacy_adapter.change_category_by_natural_key(
+            _current_user_id(),
+            type='expense', date=date_str, amount=amount, description=desc,
+            new_category=new_category,
+        )
+        if merchant is None:
             flash('Expense not found!')
             return redirect(url_for('expenses'))
-        
-        merchant = getattr(target_expense, 'description', None)
-        
-        # Update this expense
-        target_expense.category = new_category
-        
-        # Update all expenses with the same merchant/description
-        updated_count = 0
-        for exp in data_manager._expenses:
-            if getattr(exp, 'description', None) == merchant:
-                exp.category = new_category
-                updated_count += 1
-        
-        data_manager.save()
-        
-        # Save merchant-category mapping for auto-categorization of future transactions
+
         update_merchant_category(merchant, new_category, transaction_type='expenses')
-        
         flash(f'Category updated to "{new_category}" for {updated_count} transaction(s) from the same merchant!')
     except Exception as e:
         flash(f'Error updating category: {str(e)}')
@@ -693,30 +632,14 @@ def budgets():
             flash('Invalid limit amount!')
             return redirect(url_for('budgets'))
 
-        # Create budget entry
-        budget_entry = {
-            'category': category,
-            'limit': limit
-        }
-
-        # Check if budget already exists for this category
-        existing = False
-        for i, b in enumerate(data_manager._budgets):
-            if getattr(b, 'category', None) == category:
-                data_manager._budgets[i] = type('Budget', (), budget_entry)
-                existing = True
-                break
-
-        if not existing:
-            data_manager._budgets.append(type('Budget', (), budget_entry))
-
-        data_manager.save()
+        legacy_adapter.set_budget(_current_user_id(), category=category, limit_amount=limit)
         flash('Budget limit set successfully!')
         return redirect(url_for('budgets'))
 
     # Calculate spending per category with timeframe filtering
     timeframe_months = session.get('timeframe_months', 12)
-    all_expenses = data_manager.get_expenses()
+    uid = _current_user_id()
+    all_expenses = legacy_adapter.get_expenses(uid)
     expenses = filter_by_timeframe(all_expenses)
     category_spending = {}
 
@@ -727,19 +650,20 @@ def budgets():
 
     # Prepare budget data with spending info
     budget_list = []
-    for budget in data_manager.get_budgets():
-        cat = getattr(budget, 'category', '')
-        limit = float(getattr(budget, 'limit', 0))
+    for budget in legacy_adapter.get_budgets(uid):
+        cat = budget.category
+        limit = float(budget.limit)
         spent = category_spending.get(cat, 0)
         remaining = limit - spent
         percentage = (spent / limit * 100) if limit > 0 else 0
 
         budget_list.append({
+            'id': budget.id,
             'category': cat,
             'limit': limit,
             'spent': spent,
             'remaining': remaining,
-            'percentage': percentage
+            'percentage': percentage,
         })
 
     return render_template('budgets.html', budgets=budget_list, timeframe_months=timeframe_months)
@@ -748,12 +672,8 @@ def budgets():
 @app.route('/delete_budget/<int:budget_id>', methods=['POST'])
 @login_required
 def delete_budget(budget_id):
-    try:
-        del data_manager._budgets[budget_id]
-        data_manager.save()
-        flash('Budget deleted successfully!')
-    except IndexError:
-        flash('Budget not found!')
+    deleted = legacy_adapter.delete_budget(_current_user_id(), budget_id)
+    flash('Budget deleted successfully!' if deleted else 'Budget not found!')
     return redirect(url_for('budgets'))
 
 
@@ -761,10 +681,11 @@ def delete_budget(budget_id):
 @login_required
 def reports():
     timeframe_months = session.get('timeframe_months', 12)
-    
+
     # Get all transactions and filter by timeframe
-    all_incomes = data_manager.get_incomes()
-    all_expenses = data_manager.get_expenses()
+    uid = _current_user_id()
+    all_incomes = legacy_adapter.get_incomes(uid)
+    all_expenses = legacy_adapter.get_expenses(uid)
     incomes = filter_by_timeframe(all_incomes)
     expenses = filter_by_timeframe(all_expenses)
 
@@ -903,8 +824,9 @@ def graphs_stats():
     """Comprehensive analytics and visualization dashboard with predictions"""
     try:
         timeframe_months = session.get('timeframe_months', 12)
-        all_incomes = data_manager.get_incomes()
-        all_expenses = data_manager.get_expenses()
+        uid = _current_user_id()
+        all_incomes = legacy_adapter.get_incomes(uid)
+        all_expenses = legacy_adapter.get_expenses(uid)
         incomes = filter_by_timeframe(all_incomes)
         expenses = filter_by_timeframe(all_expenses)
 
