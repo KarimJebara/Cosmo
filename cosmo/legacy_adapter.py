@@ -19,7 +19,14 @@ from datetime import date as _date, datetime
 from typing import Any, Iterable
 
 from cosmo.db import get_session
+from cosmo.fx.service import default_service as default_fx_service
 from cosmo.repos import AccountRepo, BudgetRepo, CategoryRepo, TransactionRepo
+
+# Until the user-level base_currency is exposed in the UI (Phase 4), every
+# user reports in EUR. The FX service still snapshots historical rates by
+# date, so this constant only changes the *reporting* currency, not what's
+# stored on the transaction.
+_DEFAULT_BASE_CURRENCY = "EUR"
 
 
 # ---------------------------------------------------------------------------
@@ -161,21 +168,33 @@ def add_transaction(
 ) -> int:
     """Create a transaction. Returns the new transaction id.
 
-    ``base_amount`` is left equal to ``amount`` for non-EUR currencies until
-    the Phase-2 FX service ships. ``fx_rate_used`` stays NULL so a follow-up
-    backfill can recompute correct historical conversions.
+    For non-base-currency transactions we look up the FX rate for the
+    transaction date and snapshot ``base_amount`` and ``fx_rate_used``.
+    If no rate is available (rare — providers down + no cached neighbour),
+    we still create the transaction with ``base_amount = original`` and
+    ``fx_rate_used = NULL`` so a later backfill can fix it.
     """
     if type not in ("income", "expense"):
         raise ValueError(f"Unsupported transaction type: {type!r}")
 
     parsed_date = _parse_date(date)
+    base_currency = _DEFAULT_BASE_CURRENCY
+    base_amount = float(amount)
+    fx_rate_used: float | None = None
+
+    if currency.upper() != base_currency.upper():
+        rate = default_fx_service().get_rate(parsed_date, currency, base_currency)
+        if rate is not None:
+            base_amount = float(amount) * rate
+            fx_rate_used = rate
+
     with get_session() as session:
-        account_id = AccountRepo(session).get_default_for_user(user_id)
-        if account_id is None:
-            account_id = AccountRepo(session).create(
-                user_id=user_id, name="Default", currency="EUR"
+        account = AccountRepo(session).get_default_for_user(user_id)
+        if account is None:
+            account = AccountRepo(session).create(
+                user_id=user_id, name="Default", currency=base_currency
             )
-        account_id = account_id.id if hasattr(account_id, "id") else account_id
+        account_id = account.id
 
         category_obj = CategoryRepo(session).get_or_create(user_id, category, type)
         tx = TransactionRepo(session).create(
@@ -184,7 +203,8 @@ def add_transaction(
             date=parsed_date,
             original_amount=amount,
             original_currency=currency,
-            base_amount=amount,
+            base_amount=base_amount,
+            fx_rate_used=fx_rate_used,
             type=type,
             description=description,
             category_id=category_obj.id,
