@@ -110,7 +110,7 @@ def login():
         password = request.form.get('password')
 
         if not username or not password:
-            flash('Please fill in all fields!')
+            flash('Fill in all required fields.')
             return redirect(url_for('login'))
 
         user_id = database.authenticate_user(username, password)
@@ -119,10 +119,10 @@ def login():
             session['username'] = username
             session['currency'] = session.get('currency', 'EUR')
             legacy_adapter.ensure_default_account(user_id)
-            flash(f'Welcome back, {username}!')
+            flash(f'Welcome back, {username}.')
             return redirect(url_for('dashboard'))
         else:
-            flash('Invalid username or password!')
+            flash('Invalid username or password.')
             return redirect(url_for('login'))
 
     return render_template('login.html')
@@ -136,29 +136,29 @@ def signup():
         confirm_password = request.form.get('confirm_password')
 
         if not username or not password or not confirm_password:
-            flash('Please fill in all fields!')
+            flash('Fill in all required fields.')
             return redirect(url_for('signup'))
 
         if len(username) < 3:
-            flash('Username must be at least 3 characters long!')
+            flash('Username must be at least 3 characters long.')
             return redirect(url_for('signup'))
 
         if len(password) < 4:
-            flash('Password must be at least 4 characters long!')
+            flash('Password must be at least 4 characters long.')
             return redirect(url_for('signup'))
 
         if password != confirm_password:
-            flash('Passwords do not match!')
+            flash('Passwords do not match.')
             return redirect(url_for('signup'))
 
         user_id = database.create_user(username, password)
         if user_id:
             session['user_id'] = user_id
             session['username'] = username
-            flash(f'Account created successfully! Welcome, {username}!')
+            flash(f'Account created. Welcome, {username}.')
             return redirect(url_for('dashboard'))
         else:
-            flash('Username already exists! Please choose a different one.')
+            flash('That username is already taken. Pick another.')
             return redirect(url_for('signup'))
 
     return render_template('signup.html')
@@ -168,7 +168,7 @@ def signup():
 def logout():
     username = session.get('username', 'User')
     session.clear()
-    flash(f'Goodbye, {username}! You have been logged out.')
+    flash(f'Signed out. See you, {username}.')
     return redirect(url_for('login'))
 
 
@@ -377,7 +377,7 @@ def income():
         currency = request.form.get('currency', 'EUR')
 
         if not date or not user_category or not amount:
-            flash('All fields are required!')
+            flash('All fields are required.')
             return redirect(url_for('income'))
 
         try:
@@ -385,7 +385,7 @@ def income():
             if amount <= 0:
                 raise ValueError("Amount must be positive")
         except ValueError:
-            flash('Invalid amount!')
+            flash('Invalid amount.')
             return redirect(url_for('income'))
 
         auto_category = legacy_adapter.auto_categorize(
@@ -407,7 +407,7 @@ def income():
             flash('Invalid date format — use YYYY-MM-DD.')
             return redirect(url_for('income'))
 
-        flash('Income added successfully!')
+        flash('Income added.')
         return redirect(url_for('income'))
 
     timeframe_months = session.get('timeframe_months', 12)
@@ -430,7 +430,7 @@ def expenses():
         currency = request.form.get('currency', 'EUR')
 
         if not date or not user_category or not amount:
-            flash('All fields are required!')
+            flash('All fields are required.')
             return redirect(url_for('expenses'))
 
         try:
@@ -438,7 +438,7 @@ def expenses():
             if amount <= 0:
                 raise ValueError("Amount must be positive")
         except ValueError:
-            flash('Invalid amount!')
+            flash('Invalid amount.')
             return redirect(url_for('expenses'))
 
         auto_category = legacy_adapter.auto_categorize(
@@ -460,7 +460,7 @@ def expenses():
             flash('Invalid date format — use YYYY-MM-DD.')
             return redirect(url_for('expenses'))
 
-        flash('Expense added successfully!')
+        flash('Expense added.')
         return redirect(url_for('expenses'))
 
     timeframe_months = session.get('timeframe_months', 12)
@@ -521,7 +521,7 @@ def delete_income(date_str, amount, desc):
             _current_user_id(),
             type='income', date=date_str, amount=amount, description=desc,
         )
-        flash('Income deleted successfully!' if deleted else 'Income not found!')
+        flash('Income deleted.' if deleted else 'Income not found.')
     except Exception as e:
         flash(f'Error deleting income: {e!s}')
     return redirect(url_for('income'))
@@ -533,7 +533,7 @@ def change_income_category(date_str, amount, desc):
     try:
         new_category = request.form.get('new_category')
         if not new_category:
-            flash('Please select a category!')
+            flash('Choose a category.')
             return redirect(url_for('income'))
 
         updated_count, merchant = legacy_adapter.change_category_by_natural_key(
@@ -542,14 +542,14 @@ def change_income_category(date_str, amount, desc):
             new_category=new_category,
         )
         if merchant is None:
-            flash('Income not found!')
+            flash('Income not found.')
             return redirect(url_for('income'))
 
         # learn_from_correction in the adapter already persisted a
         # MerchantRule. Mirror to the legacy JSON file too so any code that
         # still reads it stays consistent until merchant_mapper is removed.
         update_merchant_category(merchant, new_category, transaction_type='income')
-        flash(f'Category updated to "{new_category}" for {updated_count} transaction(s) from the same merchant!')
+        flash(f'Category set to "{new_category}" for {updated_count} matching transactions.')
     except Exception as e:
         flash(f'Error updating category: {e!s}')
     return redirect(url_for('income'))
@@ -563,7 +563,7 @@ def delete_expense(date_str, amount, desc):
             _current_user_id(),
             type='expense', date=date_str, amount=amount, description=desc,
         )
-        flash('Expense deleted successfully!' if deleted else 'Expense not found!')
+        flash('Expense deleted.' if deleted else 'Expense not found.')
     except Exception as e:
         flash(f'Error deleting expense: {e!s}')
     return redirect(url_for('expenses'))
@@ -575,7 +575,7 @@ def change_expense_category(date_str, amount, desc):
     try:
         new_category = request.form.get('new_category')
         if not new_category:
-            flash('Please select a category!')
+            flash('Choose a category.')
             return redirect(url_for('expenses'))
 
         updated_count, merchant = legacy_adapter.change_category_by_natural_key(
@@ -584,12 +584,12 @@ def change_expense_category(date_str, amount, desc):
             new_category=new_category,
         )
         if merchant is None:
-            flash('Expense not found!')
+            flash('Expense not found.')
             return redirect(url_for('expenses'))
 
         # See change_income_category for the dual-write rationale.
         update_merchant_category(merchant, new_category, transaction_type='expenses')
-        flash(f'Category updated to "{new_category}" for {updated_count} transaction(s) from the same merchant!')
+        flash(f'Category set to "{new_category}" for {updated_count} matching transactions.')
     except Exception as e:
         flash(f'Error updating category: {e!s}')
     return redirect(url_for('expenses'))
@@ -603,7 +603,7 @@ def budgets():
         limit = request.form.get('limit')
 
         if not category or not limit:
-            flash('Please fill in all fields!')
+            flash('Fill in all required fields.')
             return redirect(url_for('budgets'))
 
         try:
@@ -611,11 +611,11 @@ def budgets():
             if limit <= 0:
                 raise ValueError("Limit must be positive")
         except ValueError:
-            flash('Invalid limit amount!')
+            flash('Invalid limit amount.')
             return redirect(url_for('budgets'))
 
         legacy_adapter.set_budget(_current_user_id(), category=category, limit_amount=limit)
-        flash('Budget limit set successfully!')
+        flash('Budget limit set successfully.')
         return redirect(url_for('budgets'))
 
     # Calculate spending per category with timeframe filtering
@@ -630,12 +630,18 @@ def budgets():
         amount = float(getattr(expense, 'amount', 0))
         category_spending[cat] = category_spending.get(cat, 0) + amount
 
-    # Prepare budget data with spending info
+    # Prepare budget data with spending info.
+    # Limits are stored as a monthly amount. The user-selected timeframe may
+    # span many months, so we compare monthly-average spend to the monthly
+    # limit (otherwise a 12 month window of normal spending shows up as 1200
+    # percent over).
     budget_list = []
+    months = max(timeframe_months, 1)
     for budget in legacy_adapter.get_budgets(uid):
         cat = budget.category
         limit = float(budget.limit)
-        spent = category_spending.get(cat, 0)
+        total_spent = category_spending.get(cat, 0)
+        spent = total_spent / months  # average monthly spend within window
         remaining = limit - spent
         percentage = (spent / limit * 100) if limit > 0 else 0
 
@@ -644,8 +650,10 @@ def budgets():
             'category': cat,
             'limit': limit,
             'spent': spent,
+            'total_spent': total_spent,
             'remaining': remaining,
             'percentage': percentage,
+            'months': months,
         })
 
     return render_template('budgets.html', budgets=budget_list, timeframe_months=timeframe_months)
@@ -655,7 +663,7 @@ def budgets():
 @login_required
 def delete_budget(budget_id):
     deleted = legacy_adapter.delete_budget(_current_user_id(), budget_id)
-    flash('Budget deleted successfully!' if deleted else 'Budget not found!')
+    flash('Budget deleted.' if deleted else 'Budget not found.')
     return redirect(url_for('budgets'))
 
 
@@ -739,7 +747,7 @@ def rules():
 @login_required
 def delete_rule(rule_id):
     deleted = legacy_adapter.delete_merchant_rule(_current_user_id(), rule_id)
-    flash('Rule deleted!' if deleted else 'Rule not found.')
+    flash('Rule deleted.' if deleted else 'Rule not found.')
     return redirect(url_for('rules'))
 
 

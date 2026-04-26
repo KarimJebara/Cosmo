@@ -31,6 +31,7 @@ ignore = [
 "tests/**" = ["B011"]  # pytest assert messages
 "cosmo/fx/format.py" = ["RUF001"]  # currency symbols use NBSP intentionally
 "cosmo/migrations/env.py" = ["E402", "SIM103"]  # alembic-generated boilerplate
+"scripts/**" = ["E402", "SIM105", "I001"]  # one-off operator scripts
 
 [tool.black]
 line-length = 100

@@ -13,14 +13,14 @@ def test_create_budget_missing_category(authenticated_client):
         'limit': '500.00'
     }, follow_redirects=True)
 
-    assert b'Please fill in all fields' in response.data
+    assert b'Fill in all required fields' in response.data
 
 def test_create_budget_missing_limit(authenticated_client):
     response = authenticated_client.post('/budgets', data={
         'category': 'Albert Heijn'
     }, follow_redirects=True)
 
-    assert b'Please fill in all fields' in response.data
+    assert b'Fill in all required fields' in response.data
 
 def test_create_budget_negative_limit(authenticated_client):
     response = authenticated_client.post('/budgets', data={
@@ -149,7 +149,7 @@ def test_delete_budget_valid_id(authenticated_client):
 
     response = authenticated_client.post(f'/delete_budget/{budget_id}', follow_redirects=True)
 
-    assert b'Budget deleted successfully' in response.data
+    assert b'Budget deleted' in response.data
 
 def test_delete_budget_invalid_id(authenticated_client):
     response = authenticated_client.post('/delete_budget/999', follow_redirects=True)
