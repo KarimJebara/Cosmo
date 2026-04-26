@@ -1,181 +1,67 @@
-/*
+/* Income page layout. Uses tokens defined in base.css. */
 
-
-body {
-    font-family: 'Segoe UI', Arial, sans-serif;
-    background: #f4f6f8;
-    margin: 0;
-}
-
-.navbar {
-    background: #2d3748;
-    color: #fff;
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.navbar a {
-    color: #fff;
-    text-decoration: none;
-    margin: 0 1rem;
-    font-weight: 500;
-}
-
-.container {
-    max-width: 600px;
-    margin: 2rem auto;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
-    padding: 2rem;
-}
-
-h1 {
-    margin-bottom: 1.5rem;
-}
-
-h2 {
-    margin-top: 2rem;
-    margin-bottom: 1rem;
-}
-
-.total-box {
-    background: #e6f7e6;
-    padding: 1rem;
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-    text-align: center;
-    font-size: 1.3rem;
-}
-
-form {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.form-row {
+.entry-grid {
     display: grid;
-    grid-template-columns: 1fr 2fr 1.5fr;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
+    grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+    gap: var(--sp-5);
+    align-items: start;
+    margin-bottom: var(--sp-6);
 }
 
-form input[type="date"],
-form input[type="text"],
-form input[type="number"],
-form select {
-    padding: 0.5rem;
-    border-radius: 6px;
-    border: 1px solid #cbd5e0;
-    margin-bottom: 0.5rem;
+.entry-form-card {
+    position: sticky;
+    top: var(--sp-5);
 }
 
-form input[type="text"] {
+.entry-amount-row {
+    display: grid;
+    grid-template-columns: 1fr 120px;
+    gap: var(--sp-3);
+}
+
+.entry-total {
+    font-variant-numeric: tabular-nums;
+}
+
+.table-wrap {
+    overflow-x: auto;
+}
+
+.entry-table {
     width: 100%;
 }
 
-select, input[type="number"] {
-    flex: 1;
+.entry-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 
-button {
-    background: #2b6cb0;
-    color: #fff;
-    border: none;
-    padding: 0.5rem 1.5rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    width: 100%;
+.entry-table .actions-col {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
 }
 
-button:hover {
-    background: #2c5282;
+.entry-table .positive {
+    color: var(--c-success);
 }
 
-ul {
-    list-style: none;
+.inline-form {
+    display: inline;
+    margin: 0;
     padding: 0;
-}
-
-li {
-    background: #f7fafc;
-    margin-bottom: 0.5rem;
-    padding: 0.75rem 1rem;
-    border-radius: 6px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.transaction-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    margin-bottom: 0.5rem;
-    background: #f7fafc;
-    border-radius: 6px;
-}
-
-.transaction-details {
-    flex: 1;
-}
-
-.transaction-date {
-    color: #666;
-    font-size: 0.9rem;
-}
-
-.transaction-amount {
-    font-weight: bold;
-    color: #2b6cb0;
-    font-size: 1.1rem;
-}
-
-.delete-btn {
-    background: #e53e3e;
-    color: white;
+    background: none;
     border: none;
-    padding: 0.4rem 0.8rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.85rem;
+    box-shadow: none;
 }
 
-.delete-btn:hover {
-    background: #c53030;
+@media (max-width: 900px) {
+    .entry-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .entry-form-card {
+        position: static;
+    }
 }
-
-.flash {
-    background: #c6f6d5;
-    color: #22543d;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    margin-bottom: 1rem;
-}
-
-.back-link {
-    display: inline-block;
-    margin-top: 1rem;
-    background: #2b6cb0;
-    color: #fff;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.empty-state {
-    text-align: center;
-    color: #999;
-    padding: 2rem;
-}
-
-
-
-*/

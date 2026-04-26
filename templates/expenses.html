@@ -2,27 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Expenses - Cosmo</title>
+    <title>Expenses | Cosmo</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='expenses.css') }}">
 </head>
 <body>
-    <!-- Navbar -->
-    <div class="navbar">
+    <nav class="navbar">
         <div class="navbar-brand">
             <div class="navbar-avatar">{{ session.username[0].upper() if session.username else 'U' }}</div>
             <strong>Cosmo</strong>
-        </div>
-        <div class="navbar-timeframe">
-            <label for="timeframe" style="margin-right: 8px; font-size: 14px; color: #666;">Timeframe:</label>
-            <select id="timeframe" onchange="changeTimeframe(this.value)" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ddd; background: white; cursor: pointer;">
-                <option value="1" {% if timeframe_months == 1 %}selected{% endif %}>1 Month</option>
-                <option value="2" {% if timeframe_months == 2 %}selected{% endif %}>2 Months</option>
-                <option value="3" {% if timeframe_months == 3 %}selected{% endif %}>3 Months</option>
-                <option value="6" {% if timeframe_months == 6 %}selected{% endif %}>6 Months</option>
-                <option value="9" {% if timeframe_months == 9 %}selected{% endif %}>9 Months</option>
-                <option value="12" {% if timeframe_months == 12 %}selected{% endif %}>12 Months</option>
-            </select>
         </div>
         <div class="navbar-nav">
             <a href="{{ url_for('dashboard') }}">Dashboard</a>
@@ -30,24 +19,18 @@
             <a href="{{ url_for('expenses') }}" class="active">Expenses</a>
             <a href="{{ url_for('budgets') }}">Budgets</a>
             <a href="{{ url_for('reports') }}">Reports</a>
-            <a href="{{ url_for('graphs_stats') }}">Graphs & Stats</a>
-            <a href="{{ url_for('revolut_import') }}">Revolut Import</a>
-            <a href="{{ url_for('logout') }}" style="margin-left: auto;">Logout ({{ session.username }})</a>
+            <a href="{{ url_for('graphs_stats') }}">Analytics</a>
+            <a href="{{ url_for('rules') }}">Rules</a>
+            <a href="{{ url_for('revolut_import') }}">Import</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
         </div>
-    </div>
-
-    <script>
-    function changeTimeframe(months) {
-        fetch('/set_timeframe/' + months, { method: 'POST' })
-            .then(() => window.location.reload());
-    }
-    </script>
+    </nav>
 
     <div class="container container-lg">
-        <!-- Page Header -->
         <div class="page-header">
             <div>
-                <h1>Expense Tracker</h1>
+                <h1>Expenses</h1>
+                <p class="muted">Record spending and review recent activity.</p>
             </div>
         </div>
 
@@ -61,113 +44,103 @@
           {% endif %}
         {% endwith %}
 
-        <!-- Total Box -->
-        <div class="stat-card" style="margin-bottom: 2rem; border-left-color: var(--danger);">
-            <span class="stat-label">Total Expenses</span>
-            <span class="stat-value" style="color: var(--danger);">€{{ "%.2f"|format(total_expenses|default(0)) }}</span>
-        </div>
-
-        <!-- Add Expense Form -->
-        <form method="post" style="margin-bottom: 2rem;">
-            <h3 style="margin-bottom: 1.5rem;">Add New Expense</h3>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="date">Date</label>
-                    <input type="date" id="date" name="date" required>
+        <div class="entry-grid">
+            <section class="card entry-form-card">
+                <div class="card-header">
+                    <h3 class="card-title">Add expense</h3>
                 </div>
-                <div class="form-group">
-                    <label for="amount">Amount</label>
-                    <input type="number" id="amount" name="amount" placeholder="0.00" step="0.01" min="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label for="currency">Currency</label>
-                    <select id="currency" name="currency" style="padding: 0.5rem; border-radius: 6px; border: 1px solid #cbd5e0;">
-                        <option value="EUR">EUR (€)</option>
-                        <option value="GBP">GBP (£)</option>
-                        <option value="USD">USD ($)</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="description">Title</label>
-                <input type="text" id="description" name="description" placeholder="Expense title..." required>
-            </div>
-            <input type="hidden" name="category" value="Other">
-            <button type="submit" class="btn">+ Add Expense</button>
-        </form>
-
-        <!-- Expenses History -->
-        <div class="card">
-            <div class="card-header">
-                <h3>Expense History</h3>
-            </div>
-
-            {% if expenses %}
-                <div>
-                {% for expense in expenses %}
-                    <div class="transaction-item">
-                        <div class="transaction-info">
-                            <div class="transaction-icon expense">🛒</div>
-                            <div class="transaction-details">
-                                <span class="transaction-name">{{ expense.description if expense.description else expense.category }}</span>
-                                <span class="transaction-date">{{ expense.date }}</span>
-                                {% if expense.description and expense.description != expense.category %}
-                                <span class="text-muted" style="display: block; margin-top: 0.25rem;">Category: {{ expense.category }}</span>
-                                {% endif %}
-                            </div>
+                <div class="card-body">
+                    <form method="post">
+                        <div class="field">
+                            <label for="date">Date</label>
+                            <input type="date" id="date" name="date" required>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 1rem;">
-                            <div class="transaction-amount negative">-{{ expense.amount|format_with_conversion(expense.currency) }}</div>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <button type="button" class="btn btn-small" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="toggleCategoryDropdown('expense-{{ loop.index0 }}')">Change Category</button>
-                                <form method="post" action="{{ url_for('delete_expense', date_str=expense.date, amount=expense.amount, desc=expense.description) }}" style="margin: 0; background: transparent;">
-                                    <button type="submit" class="btn btn-danger btn-small" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border: none;" onclick="return confirm('Delete this expense?')">Delete</button>
-                                </form>
-                            </div>
+                        <div class="field">
+                            <label for="category">Category</label>
+                            <select id="category" name="category" required>
+                                <option value="Food & Dining">Food and dining</option>
+                                <option value="Transportation">Transportation</option>
+                                <option value="Utilities">Utilities</option>
+                                <option value="Rent/Mortgage">Rent or mortgage</option>
+                                <option value="Entertainment">Entertainment</option>
+                                <option value="Shopping">Shopping</option>
+                                <option value="Healthcare">Healthcare</option>
+                                <option value="Education">Education</option>
+                                <option value="Insurance">Insurance</option>
+                                <option value="Other" selected>Other</option>
+                            </select>
                         </div>
-                        <div id="expense-{{ loop.index0 }}" class="category-dropdown" style="display: none; margin-top: 0.5rem;">
-                            <form method="post" action="{{ url_for('change_expense_category', date_str=expense.date, amount=expense.amount, desc=expense.description) }}" style="margin: 0;">
-                                <select name="new_category" class="form-control" onchange="this.form.submit()">
-                                    <option value="">-- Select Category --</option>
-                                    <option value="Food & Dining">Food & Dining</option>
-                                    <option value="Transportation">Transportation</option>
-                                    <option value="Utilities">Utilities</option>
-                                    <option value="Rent/Mortgage">Rent/Mortgage</option>
-                                    <option value="Entertainment">Entertainment</option>
-                                    <option value="Shopping">Shopping</option>
-                                    <option value="Healthcare">Healthcare</option>
-                                    <option value="Education">Education</option>
-                                    <option value="Insurance">Insurance</option>
-                                    <option value="Other">Other</option>
+                        <div class="field">
+                            <label for="description">Description</label>
+                            <input type="text" id="description" name="description" placeholder="Merchant or note" required>
+                            <p class="help">Optional. Short note.</p>
+                        </div>
+                        <div class="entry-amount-row">
+                            <div class="field">
+                                <label for="amount">Amount</label>
+                                <input type="number" id="amount" name="amount" placeholder="0.00" step="0.01" min="0.01" required>
+                            </div>
+                            <div class="field">
+                                <label for="currency">Currency</label>
+                                <select id="currency" name="currency">
+                                    <option value="EUR">EUR</option>
+                                    <option value="GBP">GBP</option>
+                                    <option value="USD">USD</option>
                                 </select>
-                            </form>
+                            </div>
                         </div>
-                    </div>
-                {% endfor %}
+                        <button type="submit" class="btn btn-primary btn-full">Add expense</button>
+                    </form>
                 </div>
-            {% else %}
-                <div class="empty-state">
-                    <div class="empty-state-icon">🛍️</div>
-                    <p>No expense entries yet</p>
-                    <p style="font-size: 0.9rem; color: var(--gray-400);">Add your first expense using the form above</p>
+            </section>
+
+            <section class="card entry-list-card">
+                <div class="card-header">
+                    <h3 class="card-title">Recent expenses</h3>
+                    <span class="muted entry-total">Total {{ "%.2f"|format(total_expenses|default(0)) }} EUR</span>
                 </div>
-            {% endif %}
+                <div class="card-body">
+                    {% if expenses %}
+                        <div class="table-wrap">
+                            <table class="table entry-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Category</th>
+                                        <th>Description</th>
+                                        <th class="num">Amount</th>
+                                        <th class="actions-col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                {% for expense in expenses %}
+                                    <tr>
+                                        <td>{{ expense.date }}</td>
+                                        <td><span class="badge badge-neutral">{{ expense.category }}</span></td>
+                                        <td>{{ expense.description if expense.description else '' }}</td>
+                                        <td class="num negative">{{ expense.amount|format_with_conversion(expense.currency) }}</td>
+                                        <td class="actions-col">
+                                            <form method="post" action="{{ url_for('delete_expense', date_str=expense.date, amount=expense.amount, desc=expense.description) }}" class="inline-form">
+                                                <button type="submit" class="btn btn-ghost btn-sm" onclick="return confirm('Delete this entry?')">Delete</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="muted">No expense entries yet. Use the form to add the first one.</p>
+                    {% endif %}
+                </div>
+            </section>
         </div>
 
-        <a class="back-link" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+        <a class="back-link" href="{{ url_for('dashboard') }}">Back to dashboard</a>
     </div>
 
     <script>
         document.getElementById('date').valueAsDate = new Date();
-        
-        function toggleCategoryDropdown(id) {
-            const dropdown = document.getElementById(id);
-            if (dropdown.style.display === 'none' || dropdown.style.display === '') {
-                dropdown.style.display = 'block';
-            } else {
-                dropdown.style.display = 'none';
-            }
-        }
     </script>
 </body>
 </html>
